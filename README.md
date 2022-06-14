@@ -49,8 +49,10 @@ with as we go along:
   drag Cypress into the picture. [I did a little experiment](https://github.com/NicMcPhee/rust-yew-cypress)
   to convince myself that it's doable, and it totally is, so we'll
   see.
+- See if I can get some kind of code coverage report, preferably
+  tht can be included in the build checks via GitHub Actions.
 - Deploy the app on [GitHub pages](https://pages.github.com).
-- I don't think there's any
+  I don't think there's any
   reason that this can't work fine as a serverless app, and if
   that does work then I can make this available to other interested
   folks (e.g., other instructors, people retiring old organizations)
