@@ -18,7 +18,7 @@ a variety of reasons:
   courses have a dependency with a potential security concern.
 
 [Archiving a single repository via the GitHub web interface](https://docs.github.com/en/repositories/archiving-a-github-repository/archiving-repositories)
-is reasonable enough, but archiving dozes of repositories by hand
+is reasonable enough, but archiving dozens of repositories by hand
 is _incredibly_ tedious and really not feasible. It's pretty clear
 that [this is doable via the GitHub API](https://docs.github.com/en/rest/repos/repos),
 though, so I'd like to
