@@ -78,9 +78,9 @@ with as we go along:
   looked at any of them.
 - It might be interesting to build the same thing in a more
   "traditional" JS/TS framework as well, and it could be a nice
-  excuse to try out something like [Svelte](https://svelte.dev) or 
+  excuse to try out something like [Svelte](https://svelte.dev) or
   similar that I haven't used
-  before. But I'm not sure that will happen, but you never know.
+  before. I'm not sure that will happen, but you never know.
 - Go through the full GitHub "[stuff you should do with your repo](<https://docs.github.com/en/communities>)"
   list, like have development guidelines and the like. I've seen
   things like that show up in the settings over the past several
