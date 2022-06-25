@@ -7,18 +7,18 @@ use yew_router::prelude::*;
 
 #[derive(Clone, Routable, PartialEq)]
 enum RootRoute {
-    #[at("/yew-template-for-github-io/")]
+    #[at("/ice-repos/")]
     Home,
-    #[at("/yew-template-for-github-io/:s")]
+    #[at("/ice-repos/:s")]
     Route,
 }
 
 #[derive(Clone, Routable, PartialEq)]
 enum Route {
-    #[at("/yew-template-for-github-io/about")]
+    #[at("/ice-repos/about")]
     About,
     #[not_found]
-    #[at("/yew-template-for-github-io/404")]
+    #[at("/ice-repos/404")]
     NotFound,
 }
 
@@ -68,7 +68,7 @@ fn app() -> Html {
     html! {
         // ********************************************************
         // **    basename is not supported on yew 0.19.0 yet.    **
-        // <BrowserRouter basename="/yew-template-for-github-io/">
+        // <BrowserRouter basename="/ice-repos/">
         //     <Switch<Route> render={Switch::render(switch)} />
         // </BrowserRouter>
         // ********************************************************
