@@ -61,7 +61,9 @@ with as we go along:
   so it might be worth trying that.
 - Work on the CSS to make it look at least decent. I've never
   actually done much CSS work, and this would be a good opportunity
-  to gain some useful experience there.
+  to gain some useful experience there. It looks like a lot of the
+  cool kids are using TailwindsCSS, and there's a starter template
+  that includes Tailwinds with Rust and Yew, so I might go with that.
 - Using GraphQL for the queries. I've never actually done anything
   with GraphQL, but my understanding is that [GitHub has nice
   GraphQL support](https://docs.github.com/en/graphql),
