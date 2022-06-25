@@ -601,7 +601,7 @@ function initSync(bytes) {
 
 async function init(input) {
     if (typeof input === 'undefined') {
-        input = new URL('ice-repos-d78f85e47b02a591_bg.wasm', import.meta.url);
+        input = new URL('ice-repos-ca6378b6d6af203b_bg.wasm', import.meta.url);
     }
     const imports = getImports();
 
