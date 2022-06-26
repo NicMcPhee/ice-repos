@@ -24,10 +24,40 @@ enum Route {
 
 fn root_route(routes: &RootRoute) -> Html {
     match routes {
-        RootRoute::Home => html! { <p class="text-4xl">{ "Our start on the Ice Repos project. " }</p> },
+        RootRoute::Home => home_page(),
         RootRoute::Route => html! {
             <Switch<Route> render={Switch::render(switch)} />
         },
+    }
+}
+
+enum Msg {
+    InputValue(String),
+}
+
+fn home_page(&self) -> Html {
+    let oninput = self.link.callback(|e: InputEvent| Msg::InputValue(e.data().unwrap()));
+
+    html! {
+        <div>
+            <div>
+                <p class="text-4xl">{ "Welcome to Ice Repos" }</p> 
+                <p class="text-2xl">{ "A tool for archiving groups of GitHub repos" }</p> 
+            </div>
+
+            <div>
+                <p>{ "Put form stuff here" }</p>
+
+                <div>
+                    <p>{ "Enter either an organization or a GitHub Classroom"}</p>
+                    <input oninput={oninput} />
+                </div>
+            </div>
+
+            <div>
+                <p>{ "Put the about stuff here" }</p>
+            </div>
+        </div>
     }
 }
 
