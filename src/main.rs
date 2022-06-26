@@ -1,3 +1,5 @@
+use wasm_bindgen::{JsCast, UnwrapThrowExt};
+use web_sys::{Event, HtmlInputElement, InputEvent};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -24,20 +26,62 @@ enum Route {
 
 fn root_route(routes: &RootRoute) -> Html {
     match routes {
-        RootRoute::Home => home_page(),
+        RootRoute::Home => html! { <HomePage/> },
         RootRoute::Route => html! {
             <Switch<Route> render={Switch::render(switch)} />
         },
     }
 }
 
-enum Msg {
-    InputValue(String),
+#[derive(Clone, PartialEq, Properties)]
+pub struct TextInputProps {
+    pub value: String,
+    pub on_change: Callback<String>,
 }
 
-fn home_page(&self) -> Html {
-    let oninput = self.link.callback(|e: InputEvent| Msg::InputValue(e.data().unwrap()));
+fn get_value_from_input_event(e: InputEvent) -> String {
+    let event: Event = e.dyn_into().unwrap_throw();
+    let event_target = event.target().unwrap_throw();
+    let target: HtmlInputElement = event_target.dyn_into().unwrap_throw();
+    web_sys::console::log_1(&target.value().into());
+    target.value()
+}
 
+#[function_component(TextInput)]
+pub fn text_input(props: &TextInputProps) -> Html {
+    let TextInputProps { value, on_change } = props.clone();
+
+    let oninput = Callback::from(move |input_event: InputEvent| {
+        on_change.emit(get_value_from_input_event(input_event));
+    });
+
+    html! {
+        <input type="text" {value} {oninput} />
+    }
+}
+
+#[function_component(EnterOrgForm)]
+fn enter_org_form() -> Html {
+    html!{
+        <div>
+            <div>
+                <p>{ "Enter either an organization or a GitHub Classroom"}</p>
+                <TextInput {on_change} value={self.organization.clone()} />
+                <TextInput (on_change) value={self.classroom.clone()} />
+            </div>
+        </div>
+    }
+}
+
+#[function_component(About)]
+fn about() -> Html {
+    html! {
+        <p>{ "Explain the basic idea of the app here" }</p>
+    }
+}
+
+#[function_component(HomePage)]
+fn home_page() -> Html {
     html! {
         <div>
             <div>
@@ -45,50 +89,19 @@ fn home_page(&self) -> Html {
                 <p class="text-2xl">{ "A tool for archiving groups of GitHub repos" }</p> 
             </div>
 
-            <div>
-                <p>{ "Put form stuff here" }</p>
+            <EnterOrgForm/>
 
-                <div>
-                    <p>{ "Enter either an organization or a GitHub Classroom"}</p>
-                    <input oninput={oninput} />
-                </div>
-            </div>
-
-            <div>
-                <p>{ "Put the about stuff here" }</p>
-            </div>
+            <About/>
         </div>
     }
 }
 
 fn switch(routes: &Route) -> Html {
     match routes {
-        Route::About => html! { <p>{ "About" }</p> },
+        Route::About => html! { <About/> },
         Route::NotFound => html! { <p>{ "Not Found" }</p> },
     }
 }
-
-// ===================================================================================
-// for {username}.github.io
-
-// #[derive(Clone, Routable, PartialEq)]
-//  enum RootRoute {
-//      #[at("/")]
-//      Home,
-//      #[at("/about")]
-//      About,
-//      #[not_found]
-//      #[at("/404")]
-//      NotFound,
-//  }
-
-//  fn root_route(routes: &Route) -> Html {
-//      match routes {
-//          RootRoute::Home => html! { <p class="text-4xl">{ "Yew Template" }</p> },
-//          RootRoute::About => html! { <p>{ "About" }</p> },
-//          RootRoute::NotFound => html! { <p>{ "Not Found" }</p> },
-//      }
-//  }
 
 // ===================================================================================
 
