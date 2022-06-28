@@ -57,11 +57,21 @@ fn get_value_from_input_event(e: InputEvent) -> String {
     target.value()
 }
 
-// * The callbacks aren't right – we pass back the text input contents on *every* change when it should be on input.
+// * The callbacks aren't right – we pass back the text input contents on *every*
+//   change when it should be on input.
 //   * We made progress (?) on this, but it's still logging every keystroke instead of just
 //     when the button is pushed.
-// * Change the state when the text area loses focus instead of requiring a click on the submit button.
+//   * Actually, that's just because of the `log` call in `get_value_from_input_event()
+//     right above this todo list. If we remove that, we'll see that we're only doing
+//     the callback on the button click.
+// * Change the state when the text area loses focus instead of requiring a click on the
+//   submit button.
+//   * There is an `onfocusout` event that we should be able to leverage.
+//   * There's an `onsubmit` event. Would that be potentially useful?
 // * Convert the state back to &str to avoid all the copying.
+// * Fix the color problem with the input field. The theme's font color is super light
+//   against a white background. I think the solution is to make the background color
+//   of the `input` darker, at least with this theme.
 
 /// Controlled Text Input Component
 #[function_component(TextInput)]
