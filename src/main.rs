@@ -50,17 +50,38 @@ fn get_value_from_input_event(e: InputEvent) -> String {
     target.value()
 }
 
+// * The callbacks aren't right – we pass back the text input contents on *every* change when it should be on input.
+//   * We made progress (?) on this, but it's still logging every keystroke instead of just
+//     when the button is pushed.
+// * Change the state when the text area loses focus instead of requiring a click on the submit button.
+// * Convert the state back to &str to avoid all the copying.
+
 /// Controlled Text Input Component
 #[function_component(TextInput)]
 pub fn text_input(props: &TextInputProps) -> Html {
+    let field_contents = use_state(|| String::from(""));
+
     let TextInputProps { value, on_change } = props.clone();
 
-    let oninput = Callback::from(move |input_event: InputEvent| {
-        on_change.emit(get_value_from_input_event(input_event));
-    });
+    let oninput = {
+        let field_contents = field_contents.clone();
+        Callback::from(move |input_event: InputEvent| {
+            field_contents.set(get_value_from_input_event(input_event))
+        })
+    };
+
+    let onclick: Callback<MouseEvent> = {
+        let field_contents = field_contents.clone();
+        Callback::from(move |mouse_event: MouseEvent| {
+            on_change.emit((*field_contents).clone());
+        })
+    };
 
     html! {
-        <input type="text" {value} {oninput} />
+        <div>
+            <input type="text" {oninput} value={ (*field_contents).clone() } size=40 placeholder="Enter an organization name here" />
+            <button {onclick}>{ "Submit" }</button>
+        </div>
     }
 }
 
@@ -80,7 +101,7 @@ fn home_page() -> Html {
 
                 <div>
                     <p>{ "Enter either an organization or a GitHub Classroom"}</p>
-                    <TextInput {on_change} value="Enter an organization name here"/>
+                    <TextInput {on_change} value=""/>
                 </div>
             </div>
 
