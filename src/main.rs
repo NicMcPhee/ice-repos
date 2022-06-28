@@ -1,3 +1,8 @@
+use wasm_bindgen::JsCast;
+use wasm_bindgen::UnwrapThrowExt;
+use web_sys::HtmlInputElement;
+
+use yew::callback;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -31,13 +36,38 @@ fn root_route(routes: &RootRoute) -> Html {
     }
 }
 
-enum Msg {
-    InputValue(String),
+#[derive(Clone, PartialEq, Properties)]
+pub struct TextInputProps {
+    pub value: String,
+    pub on_change: Callback<String>,
 }
 
-fn home_page(&self) -> Html {
-    let oninput = self.link.callback(|e: InputEvent| Msg::InputValue(e.data().unwrap()));
+fn get_value_from_input_event(e: InputEvent) -> String {
+    let event: Event = e.dyn_into().unwrap_throw();
+    let event_target = event.target().unwrap_throw();
+    let target: HtmlInputElement = event_target.dyn_into().unwrap_throw();
+    web_sys::console::log_1(&target.value().into());
+    target.value()
+}
 
+/// Controlled Text Input Component
+#[function_component(TextInput)]
+pub fn text_input(props: &TextInputProps) -> Html {
+    let TextInputProps { value, on_change } = props.clone();
+
+    let oninput = Callback::from(move |input_event: InputEvent| {
+        on_change.emit(get_value_from_input_event(input_event));
+    });
+
+    html! {
+        <input type="text" {value} {oninput} />
+    }
+}
+
+fn home_page() -> Html {
+    let on_change: Callback<String> = Callback::from(|string| { 
+        web_sys::console::log_1(&format!("We got <{}> from the text input!", string).into()) 
+    });
     html! {
         <div>
             <div>
@@ -50,7 +80,7 @@ fn home_page(&self) -> Html {
 
                 <div>
                     <p>{ "Enter either an organization or a GitHub Classroom"}</p>
-                    <input oninput={oninput} />
+                    <TextInput {on_change} value="Enter an organization name here"/>
                 </div>
             </div>
 
