@@ -29,10 +29,17 @@ enum Route {
 
 fn root_route(routes: &RootRoute) -> Html {
     match routes {
-        RootRoute::Home => home_page(),
+        RootRoute::Home => html! { <HomePage/> },
         RootRoute::Route => html! {
             <Switch<Route> render={Switch::render(switch)} />
         },
+    }
+}
+
+fn switch(routes: &Route) -> Html {
+    match routes {
+        Route::About => html! { <About/> },
+        Route::NotFound => html! { <p>{ "Not Found" }</p> },
     }
 }
 
@@ -85,10 +92,12 @@ pub fn text_input(props: &TextInputProps) -> Html {
     }
 }
 
+#[function_component(HomePage)]
 fn home_page() -> Html {
     let on_change: Callback<String> = Callback::from(|string| { 
         web_sys::console::log_1(&format!("We got <{}> from the text input!", string).into()) 
     });
+
     html! {
         <div>
             <div>
@@ -97,12 +106,8 @@ fn home_page() -> Html {
             </div>
 
             <div>
-                <p>{ "Put form stuff here" }</p>
-
-                <div>
-                    <p>{ "Enter either an organization or a GitHub Classroom"}</p>
-                    <TextInput {on_change} value=""/>
-                </div>
+                <p>{ "Enter either an organization or a GitHub Classroom"}</p>
+                <TextInput {on_change} value=""/>
             </div>
 
             <div>
@@ -112,34 +117,12 @@ fn home_page() -> Html {
     }
 }
 
-fn switch(routes: &Route) -> Html {
-    match routes {
-        Route::About => html! { <p>{ "About" }</p> },
-        Route::NotFound => html! { <p>{ "Not Found" }</p> },
+#[function_component(About)]
+fn about() -> Html {
+    html! {
+        <p>{ "Explain the basic idea of the app here" }</p>
     }
 }
-
-// ===================================================================================
-// for {username}.github.io
-
-// #[derive(Clone, Routable, PartialEq)]
-//  enum RootRoute {
-//      #[at("/")]
-//      Home,
-//      #[at("/about")]
-//      About,
-//      #[not_found]
-//      #[at("/404")]
-//      NotFound,
-//  }
-
-//  fn root_route(routes: &Route) -> Html {
-//      match routes {
-//          RootRoute::Home => html! { <p class="text-4xl">{ "Yew Template" }</p> },
-//          RootRoute::About => html! { <p>{ "About" }</p> },
-//          RootRoute::NotFound => html! { <p>{ "Not Found" }</p> },
-//      }
-//  }
 
 // ===================================================================================
 
