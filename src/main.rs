@@ -95,9 +95,9 @@ pub fn text_input(props: &TextInputProps) -> Html {
     };
 
     html! {
-        <div>
-            <input type="text" {oninput} value={ (*field_contents).clone() } size=40 placeholder="Enter an organization name here" />
-            <button {onclick}>{ "Submit" }</button>
+        <div class="flex space-x-1">
+            <input class="flex-auto w-64" type="text" {oninput} value={ (*field_contents).clone() } size=40 placeholder="Enter an organization name here" />
+            <button {onclick} class="bg-gray-800 flex-none p-4">{ "Submit" }</button>
         </div>
     }
 }
@@ -109,7 +109,7 @@ fn home_page() -> Html {
     });
 
     html! {
-        <div>
+        <div class="grid grid-cols-1 divide-y flex flex-col space-y-8">
             <div>
                 <p class="text-4xl">{ "Welcome to Ice Repos" }</p> 
                 <p class="text-2xl">{ "A tool for archiving groups of GitHub repos" }</p> 
@@ -121,7 +121,7 @@ fn home_page() -> Html {
             </div>
 
             <div>
-                <p>{ "Put the about stuff here" }</p>
+                <About/>
             </div>
         </div>
     }
@@ -130,7 +130,9 @@ fn home_page() -> Html {
 #[function_component(About)]
 fn about() -> Html {
     html! {
-        <p>{ "Explain the basic idea of the app here" }</p>
+        <div class="mt-4">
+            <p>{ "Explain the basic idea of the app here" }</p>
+        </div>
     }
 }
 
