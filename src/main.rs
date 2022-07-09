@@ -57,18 +57,15 @@ fn get_value_from_input_event(e: InputEvent) -> String {
     target.value()
 }
 
-// * The callbacks aren't right – we pass back the text input contents on *every*
-//   change when it should be on input.
-//   * We made progress (?) on this, but it's still logging every keystroke instead of just
-//     when the button is pushed.
-//   * Actually, that's just because of the `log` call in `get_value_from_input_event()
-//     right above this todo list. If we remove that, we'll see that we're only doing
-//     the callback on the button click.
 // * Change the state when the text area loses focus instead of requiring a click on the
 //   submit button.
 //   * There is an `onfocusout` event that we should be able to leverage.
+//     * This will trigger when we tab out, but I'm thinking that might be OK since there's
+//     * nowhere else to go in this simple interface.
 //   * There's an `onsubmit` event. Would that be potentially useful?
+// * Allow the user to press "Enter" instead of having to click on "Submit"
 // * Convert the state back to &str to avoid all the copying.
+// * Do we need `value` in `TextInputProps` or is the state doing all the useful work there?
 // * Fix the color problem with the input field. The theme's font color is super light
 //   against a white background. I think the solution is to make the background color
 //   of the `input` darker, at least with this theme.
@@ -89,14 +86,14 @@ pub fn text_input(props: &TextInputProps) -> Html {
 
     let onclick: Callback<MouseEvent> = {
         let field_contents = field_contents.clone();
-        Callback::from(move |mouse_event: MouseEvent| {
+        Callback::from(move |_| {
             on_change.emit((*field_contents).clone());
         })
     };
 
     html! {
         <div class="flex space-x-1">
-            <input class="flex-auto w-64" type="text" {oninput} value={ (*field_contents).clone() } size=40 placeholder="Enter an organization name here" />
+            <input class="flex-auto w-64 bg-gray-600" type="text" {oninput} value={ (*field_contents).clone() } size=40 placeholder="Enter an organization name here" />
             <button {onclick} class="bg-gray-800 flex-none p-4">{ "Submit" }</button>
         </div>
     }
