@@ -96,9 +96,15 @@ pub fn text_input(props: &TextInputProps) -> Html {
 
 #[function_component(HomePage)]
 fn home_page() -> Html {
-    let on_change: Callback<String> = Callback::from(|string| { 
-        web_sys::console::log_1(&format!("We got <{}> from the text input!", string).into()) 
-    });
+    let organization = use_state(|| String::from(""));
+
+    let on_change: Callback<String> = {
+        let organization = organization.clone();
+        Callback::from(move |string| { 
+            organization.set(string)
+            // web_sys::console::log_1(&format!("We got <{}> from the text input!", string).into()) 
+        })
+    };
 
     html! {
         <div class="grid grid-cols-1 divide-y flex flex-col space-y-8">
@@ -111,6 +117,13 @@ fn home_page() -> Html {
                 <p>{ "Enter either an organization or a GitHub Classroom"}</p>
                 <TextInput {on_change} />
             </div>
+
+            // Where the list of repositories go
+            if !organization.is_empty() {
+                <div>
+                    <h2 class="text-2xl">{ format!("The list of repositories for the organization {}", (*organization).clone()) }</h2>
+                </div>
+            }
 
             <div>
                 <About/>
