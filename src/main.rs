@@ -2,7 +2,6 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
 
-use yew::callback;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -45,7 +44,6 @@ fn switch(routes: &Route) -> Html {
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct TextInputProps {
-    pub value: String,
     pub on_change: Callback<String>,
 }
 
@@ -53,7 +51,6 @@ fn get_value_from_input_event(e: InputEvent) -> String {
     let event: Event = e.dyn_into().unwrap_throw();
     let event_target = event.target().unwrap_throw();
     let target: HtmlInputElement = event_target.dyn_into().unwrap_throw();
-    web_sys::console::log_1(&target.value().into());
     target.value()
 }
 
@@ -61,21 +58,19 @@ fn get_value_from_input_event(e: InputEvent) -> String {
 //   submit button.
 //   * There is an `onfocusout` event that we should be able to leverage.
 //     * This will trigger when we tab out, but I'm thinking that might be OK since there's
-//     * nowhere else to go in this simple interface.
+//       nowhere else to go in this simple interface.
 //   * There's an `onsubmit` event. Would that be potentially useful?
 // * Allow the user to press "Enter" instead of having to click on "Submit"
 // * Convert the state back to &str to avoid all the copying.
-// * Do we need `value` in `TextInputProps` or is the state doing all the useful work there?
-// * Fix the color problem with the input field. The theme's font color is super light
-//   against a white background. I think the solution is to make the background color
-//   of the `input` darker, at least with this theme.
+//   * Maybe going to leave this alone? We got into a lot of lifetime issues that I didn't
+//     want to deal with right now.
 
 /// Controlled Text Input Component
 #[function_component(TextInput)]
 pub fn text_input(props: &TextInputProps) -> Html {
     let field_contents = use_state(|| String::from(""));
 
-    let TextInputProps { value, on_change } = props.clone();
+    let TextInputProps { on_change } = props.clone();
 
     let oninput = {
         let field_contents = field_contents.clone();
@@ -114,7 +109,7 @@ fn home_page() -> Html {
 
             <div>
                 <p>{ "Enter either an organization or a GitHub Classroom"}</p>
-                <TextInput {on_change} value=""/>
+                <TextInput {on_change} />
             </div>
 
             <div>
