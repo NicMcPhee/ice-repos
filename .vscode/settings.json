@@ -1,5 +1,12 @@
 {
     "cSpell.words": [
+        "bindgen",
+        "gloo",
+        "onclick",
+        "oninput",
+        "reqwasm",
+        "Routable",
+        "serde",
         "tailwindcss"
     ]
 }

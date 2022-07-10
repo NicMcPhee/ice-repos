@@ -1,3 +1,7 @@
+use wasm_bindgen::JsCast;
+use wasm_bindgen::UnwrapThrowExt;
+use web_sys::HtmlInputElement;
+
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -24,7 +28,7 @@ enum Route {
 
 fn root_route(routes: &RootRoute) -> Html {
     match routes {
-        RootRoute::Home => html! { <p class="text-4xl">{ "Our start on the Ice Repos project. " }</p> },
+        RootRoute::Home => html! { <HomePage/> },
         RootRoute::Route => html! {
             <Switch<Route> render={Switch::render(switch)} />
         },
@@ -33,32 +37,109 @@ fn root_route(routes: &RootRoute) -> Html {
 
 fn switch(routes: &Route) -> Html {
     match routes {
-        Route::About => html! { <p>{ "About" }</p> },
+        Route::About => html! { <About/> },
         Route::NotFound => html! { <p>{ "Not Found" }</p> },
     }
 }
 
-// ===================================================================================
-// for {username}.github.io
+#[derive(Clone, PartialEq, Properties)]
+pub struct TextInputProps {
+    pub on_change: Callback<String>,
+}
 
-// #[derive(Clone, Routable, PartialEq)]
-//  enum RootRoute {
-//      #[at("/")]
-//      Home,
-//      #[at("/about")]
-//      About,
-//      #[not_found]
-//      #[at("/404")]
-//      NotFound,
-//  }
+fn get_value_from_input_event(e: InputEvent) -> String {
+    let event: Event = e.dyn_into().unwrap_throw();
+    let event_target = event.target().unwrap_throw();
+    let target: HtmlInputElement = event_target.dyn_into().unwrap_throw();
+    target.value()
+}
 
-//  fn root_route(routes: &Route) -> Html {
-//      match routes {
-//          RootRoute::Home => html! { <p class="text-4xl">{ "Yew Template" }</p> },
-//          RootRoute::About => html! { <p>{ "About" }</p> },
-//          RootRoute::NotFound => html! { <p>{ "Not Found" }</p> },
-//      }
-//  }
+// * Change the state when the text area loses focus instead of requiring a click on the
+//   submit button.
+//   * There is an `onfocusout` event that we should be able to leverage.
+//     * This will trigger when we tab out, but I'm thinking that might be OK since there's
+//       nowhere else to go in this simple interface.
+//   * There's an `onsubmit` event. Would that be potentially useful?
+// * Allow the user to press "Enter" instead of having to click on "Submit"
+// * Convert the state back to &str to avoid all the copying.
+//   * Maybe going to leave this alone? We got into a lot of lifetime issues that I didn't
+//     want to deal with right now.
+
+/// Controlled Text Input Component
+#[function_component(TextInput)]
+pub fn text_input(props: &TextInputProps) -> Html {
+    let field_contents = use_state(|| String::from(""));
+
+    let TextInputProps { on_change } = props.clone();
+
+    let oninput = {
+        let field_contents = field_contents.clone();
+        Callback::from(move |input_event: InputEvent| {
+            field_contents.set(get_value_from_input_event(input_event))
+        })
+    };
+
+    let onclick: Callback<MouseEvent> = {
+        let field_contents = field_contents.clone();
+        Callback::from(move |_| {
+            on_change.emit((*field_contents).clone());
+        })
+    };
+
+    html! {
+        <div class="flex space-x-1">
+            <input class="flex-auto w-64 bg-gray-600" type="text" {oninput} value={ (*field_contents).clone() } size=40 placeholder="Enter an organization name here" />
+            <button {onclick} class="bg-gray-800 flex-none p-4">{ "Submit" }</button>
+        </div>
+    }
+}
+
+#[function_component(HomePage)]
+fn home_page() -> Html {
+    let organization = use_state(|| String::from(""));
+
+    let on_change: Callback<String> = {
+        let organization = organization.clone();
+        Callback::from(move |string| { 
+            organization.set(string)
+            // web_sys::console::log_1(&format!("We got <{}> from the text input!", string).into()) 
+        })
+    };
+
+    html! {
+        <div class="grid grid-cols-1 divide-y flex flex-col space-y-8">
+            <div>
+                <p class="text-4xl">{ "Welcome to Ice Repos" }</p> 
+                <p class="text-2xl">{ "A tool for archiving groups of GitHub repos" }</p> 
+            </div>
+
+            <div>
+                <p>{ "Enter either an organization or a GitHub Classroom"}</p>
+                <TextInput {on_change} />
+            </div>
+
+            // Where the list of repositories go
+            if !organization.is_empty() {
+                <div>
+                    <h2 class="text-2xl">{ format!("The list of repositories for the organization {}", (*organization).clone()) }</h2>
+                </div>
+            }
+
+            <div>
+                <About/>
+            </div>
+        </div>
+    }
+}
+
+#[function_component(About)]
+fn about() -> Html {
+    html! {
+        <div class="mt-4">
+            <p>{ "Explain the basic idea of the app here" }</p>
+        </div>
+    }
+}
 
 // ===================================================================================
 
