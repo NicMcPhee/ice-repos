@@ -1,6 +1,10 @@
+use serde::Deserialize;
+
 use wasm_bindgen::JsCast;
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
+
+use reqwasm::http::Request;
 
 use yew::prelude::*;
 use yew_router::prelude::*;
@@ -94,6 +98,47 @@ pub fn text_input(props: &TextInputProps) -> Html {
     }
 }
 
+#[derive(Clone, PartialEq, Deserialize)]
+struct Video {
+    id: usize,
+    title: String,
+    speaker: String,
+    url: String,
+}
+
+#[derive(Clone, PartialEq, Properties)]
+pub struct RepositoryListProps {
+    pub organization: String,
+}
+
+#[function_component(RepositoryList)]
+pub fn repository_list(props: &RepositoryListProps) -> Html {
+    let videos = use_state(|| vec![]);
+    {
+        let videos = videos.clone();
+        use_effect_with_deps(move |_| {
+            let videos = videos.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                let fetched_videos: Vec<Video> = Request::get("/tutorial/data.json")
+                    .send()
+                    .await
+                    .unwrap()
+                    .json()
+                    .await
+                    .unwrap();
+                videos.set(fetched_videos);
+            });
+            || ()
+        }, ());
+    }
+
+    videos.iter().map(|video| {
+        html! {
+            <p>{format!("{}: {}", video.speaker, video.title)}</p>
+        }
+    }).collect()
+}
+
 #[function_component(HomePage)]
 fn home_page() -> Html {
     let organization = use_state(|| String::from(""));
@@ -122,6 +167,7 @@ fn home_page() -> Html {
             if !organization.is_empty() {
                 <div>
                     <h2 class="text-2xl">{ format!("The list of repositories for the organization {}", (*organization).clone()) }</h2>
+                    <RepositoryList organization={(*organization).clone()} />
                 </div>
             }
 

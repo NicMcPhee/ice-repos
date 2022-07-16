@@ -25,3 +25,6 @@ command_arguments = [
     "-c",
     "[ ! -d \"./node_modules\" ] && npm i || :; npm run build_css",
 ]
+
+[[proxy]]
+backend = "https://yew.rs/tutorial"
