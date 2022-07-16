@@ -28,3 +28,9 @@ command_arguments = [
 
 [[proxy]]
 backend = "https://yew.rs/tutorial"
+
+[[proxy]]
+backend = "https://jsonplaceholder.typicode.com/posts"
+
+[[proxy]]
+backend = "https://api.github.com/orgs/"
