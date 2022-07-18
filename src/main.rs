@@ -103,14 +103,14 @@ pub fn text_input(props: &TextInputProps) -> Html {
     }
 }
 
-#[derive(Clone, PartialEq, Deserialize)]
+#[derive(Clone, PartialEq, Deserialize, Debug)]
 struct Repository {
-    id: usize,
-    name: String,
-    description: String,
+    // id: usize,
+    // name: String,
+    // description: String,
 
     #[serde(flatten)]
-    extra: HashMap<String, Value>,
+    extras: HashMap<String, Value>,
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -120,42 +120,41 @@ pub struct RepositoryListProps {
 
 #[function_component(RepositoryList)]
 pub fn repository_list(props: &RepositoryListProps) -> Html {
-    let repositories = use_state(|| "");
+    let repositories = use_state(|| vec![]);
     {
         let repositories = repositories.clone();
         use_effect_with_deps(move |_| {
             let repositories = repositories.clone();
             wasm_bindgen_futures::spawn_local(async move {
-                let fetched_repos_result: Result<Response, Error> = Request::get("/orgs/UMM-CSci-3601/repos")
-                    .send()
-                    .await;
-                if let Ok(fetched_repos_response) = fetched_repos_result {
-                    repositories.set("The request succeeded")
-                } else {
-                    // Need to find a way to return an error here to the user because
-                    // the organization probably didn't exist.
-                    repositories.set("There was an error")
-                }
-                //     .json()
-                //     .await
-                //     .unwrap();
-                // repositories.set(fetched_videos);
+                // https://api.github.com/orgs/UMM-CSci-3601/repos
+                let request_url = format!("/orgs/{org}/repos", 
+                                org="UMM-CSci-3601");
+                web_sys::console::log_1(&format!("Request URL = {}", request_url).into());
+                let response = Request::get(&request_url).send().await.unwrap();
+                // let repos_result: Value = response.json().await.unwrap();
+                let repos_result: Vec<Repository> = response.json().await.unwrap();
+                web_sys::console::log_1(&format!("Users = {:?}", repos_result).into());
+                repositories.set(repos_result);
             });
             || ()
         }, ());
     }
 
-    html! {
-        <p>{ format!("The result of the request was: {}", *repositories) }</p>
-    }
-    // repositories.iter().map(|repository| {
-    //     html! {
-    //         <div>
-    //             <h2>{ format!("{} ({})", repository.name.clone(), repository.id) }</h2>
-    //             <p>{ repository.description.clone() }</p>
-    //         </div>
-    //     }
-    // }).collect()
+    // html! {
+    //     <p>{ format!("The result of the request was: {}", *repositories) }</p>
+    // }
+    repositories.iter().map(|repository: &Repository| {
+        html! {
+            <div>
+                <h2>{ format!("{} ({})", repository.extras.get("name").unwrap().clone(), 
+                                         repository.extras.get("id").unwrap())
+                }</h2>
+                <p class="text-green-300">{ 
+                    repository.extras.get("description").unwrap().clone() 
+                }</p>
+            </div>
+        }
+    }).collect()
 }
 
 #[function_component(HomePage)]
