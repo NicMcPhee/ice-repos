@@ -105,9 +105,9 @@ pub fn text_input(props: &TextInputProps) -> Html {
 
 #[derive(Clone, PartialEq, Deserialize, Debug)]
 struct Repository {
-    // id: usize,
-    // name: String,
-    // description: String,
+    id: usize,
+    name: String,
+    description: Option<String>,
 
     #[serde(flatten)]
     extras: HashMap<String, Value>,
@@ -118,6 +118,15 @@ pub struct RepositoryListProps {
     pub organization: String,
 }
 
+// Things to work on, 19 July 2022
+//  * Get repository parsing sorted
+//  * Display list of repositories
+//  * Do something sensible about error handling
+//  * Turn list of repositories into a checkbox list
+
+// Make sure I understand why we need an inner block in `repository_list`.
+// Why do we clone `repositories` twice?
+
 #[function_component(RepositoryList)]
 pub fn repository_list(props: &RepositoryListProps) -> Html {
     let repositories = use_state(|| vec![]);
@@ -126,32 +135,31 @@ pub fn repository_list(props: &RepositoryListProps) -> Html {
         use_effect_with_deps(move |_| {
             let repositories = repositories.clone();
             wasm_bindgen_futures::spawn_local(async move {
-                // https://api.github.com/orgs/UMM-CSci-3601/repos
                 let request_url = format!("/orgs/{org}/repos", 
-                                org="UMM-CSci-3601");
-                web_sys::console::log_1(&format!("Request URL = {}", request_url).into());
+                                                    org="UMM-CSci-3601-S20");
                 let response = Request::get(&request_url).send().await.unwrap();
-                // let repos_result: Value = response.json().await.unwrap();
                 let repos_result: Vec<Repository> = response.json().await.unwrap();
-                web_sys::console::log_1(&format!("Users = {:?}", repos_result).into());
                 repositories.set(repos_result);
             });
             || ()
         }, ());
     }
 
-    // html! {
-    //     <p>{ format!("The result of the request was: {}", *repositories) }</p>
-    // }
     repositories.iter().map(|repository: &Repository| {
         html! {
             <div>
-                <h2>{ format!("{} ({})", repository.extras.get("name").unwrap().clone(), 
-                                         repository.extras.get("id").unwrap())
+                <h2>{ format!("{} ({})", repository.name.clone(), 
+                                         repository.id)
                 }</h2>
-                <p class="text-green-300">{ 
-                    repository.extras.get("description").unwrap().clone() 
-                }</p>
+                if let Some(description) = &repository.description {
+                    <p class="text-green-300">{ 
+                        description.clone() 
+                    }</p>
+                } else {
+                    <p class="text-blue-300">{
+                        "There was no description for this repository"
+                    }</p>
+                }
             </div>
         }
     }).collect()
