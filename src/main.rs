@@ -125,18 +125,24 @@ pub struct RepositoryListProps {
 //  * Turn list of repositories into a checkbox list
 
 // Make sure I understand why we need an inner block in `repository_list`.
-// Why do we clone `repositories` twice?
+// Why do we clone `repositories` twice? Ditto for `organization`.
+
+// Why does `use_effect_with_deps` only execute once?
 
 #[function_component(RepositoryList)]
 pub fn repository_list(props: &RepositoryListProps) -> Html {
+    let RepositoryListProps { organization } = props;
+    let organization = organization.clone();
+    web_sys::console::log_1(&format!("RepositoryList called with organization {}.", organization).into());
     let repositories = use_state(|| vec![]);
     {
         let repositories = repositories.clone();
         use_effect_with_deps(move |_| {
-            let repositories = repositories.clone();
+            web_sys::console::log_1(&format!("use_effect_with_deps called with organization {}.", organization).into());
             wasm_bindgen_futures::spawn_local(async move {
+                web_sys::console::log_1(&format!("spawn_local called with organization {}.", organization).into());
                 let request_url = format!("/orgs/{org}/repos", 
-                                                    org="UMM-CSci-3601-S20");
+                                                    org=organization);
                 let response = Request::get(&request_url).send().await.unwrap();
                 let repos_result: Vec<Repository> = response.json().await.unwrap();
                 repositories.set(repos_result);
