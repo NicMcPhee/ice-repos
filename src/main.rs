@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 
+use chrono::DateTime;
+use chrono::Local;
+
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -73,6 +76,7 @@ fn get_value_from_input_event(e: InputEvent) -> String {
 // * Convert the state back to &str to avoid all the copying.
 //   * Maybe going to leave this alone? We got into a lot of lifetime issues that I didn't
 //     want to deal with right now.
+// * Deal with paging from GitHub
 
 /// Controlled Text Input Component
 #[function_component(TextInput)]
@@ -108,6 +112,9 @@ struct Repository {
     id: usize,
     name: String,
     description: Option<String>,
+    archived: bool,
+    updated_at: DateTime<Local>,
+    pushed_at: DateTime<Local>,
 
     #[serde(flatten)]
     extras: HashMap<String, Value>,
@@ -119,13 +126,8 @@ pub struct RepositoryListProps {
 }
 
 // Things to work on, 19 July 2022
-//  * Get repository parsing sorted
-//  * Display list of repositories
 //  * Do something sensible about error handling
 //  * Turn list of repositories into a checkbox list
-
-// Make sure I understand why we need an inner block in `repository_list`.
-// Why do we clone `repositories` twice? Ditto for `organization`.
 
 // Why does `use_effect_with_deps` only execute once?
 
@@ -141,7 +143,7 @@ pub fn repository_list(props: &RepositoryListProps) -> Html {
             web_sys::console::log_1(&format!("use_effect_with_deps called with organization {}.", organization).into());
             wasm_bindgen_futures::spawn_local(async move {
                 web_sys::console::log_1(&format!("spawn_local called with organization {}.", organization).into());
-                let request_url = format!("/orgs/{org}/repos", 
+                let request_url = format!("/orgs/{org}/repos?sort=pushed&direction=asc", 
                                                     org=organization);
                 let response = Request::get(&request_url).send().await.unwrap();
                 let repos_result: Vec<Repository> = response.json().await.unwrap();
@@ -151,12 +153,16 @@ pub fn repository_list(props: &RepositoryListProps) -> Html {
         }, ());
     }
 
-    repositories.iter().map(|repository: &Repository| {
+    repositories.iter()
+                .filter(|repository| { !repository.archived })
+                .map(|repository: &Repository| {
         html! {
             <div>
-                <h2>{ format!("{} ({})", repository.name.clone(), 
-                                         repository.id)
-                }</h2>
+                if repository.archived {
+                    <p class="text-2xl text-red-300">{ repository.name.clone() }</p>
+                } else {
+                    <h2 class="text-2xl">{ repository.name.clone() }</h2>
+                }
                 if let Some(description) = &repository.description {
                     <p class="text-green-300">{ 
                         description.clone() 
@@ -166,6 +172,8 @@ pub fn repository_list(props: &RepositoryListProps) -> Html {
                         "There was no description for this repository"
                     }</p>
                 }
+                <p>{ format!("Last updated on {}", repository.updated_at.clone().format("%Y-%m-%d")) }</p>
+                <p>{ format!("Last pushed to on {}", repository.pushed_at.clone().format("%Y-%m-%d")) }</p>
             </div>
         }
     }).collect()
