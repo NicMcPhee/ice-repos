@@ -131,16 +131,19 @@ pub struct RepositoryListProps {
 
 // Why does `use_effect_with_deps` only execute once?
 
+// Do something about paging.
+
 #[function_component(RepositoryList)]
 pub fn repository_list(props: &RepositoryListProps) -> Html {
     let RepositoryListProps { organization } = props;
-    let organization = organization.clone();
     web_sys::console::log_1(&format!("RepositoryList called with organization {}.", organization).into());
     let repositories = use_state(|| vec![]);
     {
         let repositories = repositories.clone();
-        use_effect_with_deps(move |_| {
+        let organization = organization.clone();
+        use_effect_with_deps(move |organization| {
             web_sys::console::log_1(&format!("use_effect_with_deps called with organization {}.", organization).into());
+            let organization = organization.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 web_sys::console::log_1(&format!("spawn_local called with organization {}.", organization).into());
                 let request_url = format!("/orgs/{org}/repos?sort=pushed&direction=asc", 
@@ -150,7 +153,7 @@ pub fn repository_list(props: &RepositoryListProps) -> Html {
                 repositories.set(repos_result);
             });
             || ()
-        }, ());
+        }, organization);
     }
 
     repositories.iter()
