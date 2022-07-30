@@ -56,7 +56,7 @@ fn switch(routes: &Route) -> Html {
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct TextInputProps {
-    pub on_change: Callback<String>,
+    pub on_submit: Callback<String>,
 }
 
 fn get_value_from_input_event(e: InputEvent) -> String {
@@ -83,7 +83,7 @@ fn get_value_from_input_event(e: InputEvent) -> String {
 pub fn text_input(props: &TextInputProps) -> Html {
     let field_contents = use_state(|| String::from(""));
 
-    let TextInputProps { on_change } = props.clone();
+    let TextInputProps { on_submit } = props.clone();
 
     let oninput = {
         let field_contents = field_contents.clone();
@@ -95,7 +95,7 @@ pub fn text_input(props: &TextInputProps) -> Html {
     let onclick: Callback<MouseEvent> = {
         let field_contents = field_contents.clone();
         Callback::from(move |_| {
-            on_change.emit((*field_contents).clone());
+            on_submit.emit((*field_contents).clone());
         })
     };
 
@@ -125,11 +125,9 @@ pub struct RepositoryListProps {
     pub organization: String,
 }
 
-// Things to work on, 19 July 2022
+// Things to work on, 30 July 2022
 //  * Do something sensible about error handling
 //  * Turn list of repositories into a checkbox list
-
-// Why does `use_effect_with_deps` only execute once?
 
 // Do something about paging.
 
@@ -143,6 +141,7 @@ pub fn repository_list(props: &RepositoryListProps) -> Html {
         let organization = organization.clone();
         use_effect_with_deps(move |organization| {
             web_sys::console::log_1(&format!("use_effect_with_deps called with organization {}.", organization).into());
+            repositories.set(vec![]);
             let organization = organization.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 web_sys::console::log_1(&format!("spawn_local called with organization {}.", organization).into());
@@ -156,37 +155,43 @@ pub fn repository_list(props: &RepositoryListProps) -> Html {
         }, organization);
     }
 
-    repositories.iter()
-                .filter(|repository| { !repository.archived })
-                .map(|repository: &Repository| {
+    if repositories.is_empty() {
         html! {
-            <div>
-                if repository.archived {
-                    <p class="text-2xl text-red-300">{ repository.name.clone() }</p>
-                } else {
-                    <h2 class="text-2xl">{ repository.name.clone() }</h2>
-                }
-                if let Some(description) = &repository.description {
-                    <p class="text-green-300">{ 
-                        description.clone() 
-                    }</p>
-                } else {
-                    <p class="text-blue-300">{
-                        "There was no description for this repository"
-                    }</p>
-                }
-                <p>{ format!("Last updated on {}", repository.updated_at.clone().format("%Y-%m-%d")) }</p>
-                <p>{ format!("Last pushed to on {}", repository.pushed_at.clone().format("%Y-%m-%d")) }</p>
-            </div>
+            <p>{ "Loading…" }</p>
         }
-    }).collect()
+    } else {
+        repositories.iter()
+                    .filter(|repository| { !repository.archived })
+                    .map(|repository: &Repository| {
+            html! {
+                <div>
+                    if repository.archived {
+                        <p class="text-2xl text-red-300">{ repository.name.clone() }</p>
+                    } else {
+                        <h2 class="text-2xl">{ repository.name.clone() }</h2>
+                    }
+                    if let Some(description) = &repository.description {
+                        <p class="text-green-300">{ 
+                            description.clone() 
+                        }</p>
+                    } else {
+                        <p class="text-blue-300">{
+                            "There was no description for this repository"
+                        }</p>
+                    }
+                    <p>{ format!("Last updated on {}", repository.updated_at.clone().format("%Y-%m-%d")) }</p>
+                    <p>{ format!("Last pushed to on {}", repository.pushed_at.clone().format("%Y-%m-%d")) }</p>
+                </div>
+            }
+        }).collect()
+    }
 }
 
 #[function_component(HomePage)]
 fn home_page() -> Html {
     let organization = use_state(|| String::from(""));
 
-    let on_change: Callback<String> = {
+    let on_submit: Callback<String> = {
         let organization = organization.clone();
         Callback::from(move |string| { 
             organization.set(string)
@@ -203,7 +208,7 @@ fn home_page() -> Html {
 
             <div>
                 <p>{ "Enter either an organization or a GitHub Classroom"}</p>
-                <TextInput {on_change} />
+                <TextInput {on_submit} />
             </div>
 
             // Where the list of repositories go
