@@ -141,7 +141,6 @@ pub fn repository_list(props: &RepositoryListProps) -> Html {
         let organization = organization.clone();
         use_effect_with_deps(move |organization| {
             web_sys::console::log_1(&format!("use_effect_with_deps called with organization {}.", organization).into());
-            repositories.set(vec![]);
             let organization = organization.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 web_sys::console::log_1(&format!("spawn_local called with organization {}.", organization).into());
@@ -215,7 +214,7 @@ fn home_page() -> Html {
             if !organization.is_empty() {
                 <div>
                     <h2 class="text-2xl">{ format!("The list of repositories for the organization {}", (*organization).clone()) }</h2>
-                    <RepositoryList organization={(*organization).clone()} />
+                    <RepositoryList key={(*organization).clone()} organization={(*organization).clone()} />
                 </div>
             }
 
