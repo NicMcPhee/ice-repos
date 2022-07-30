@@ -1,6 +1,18 @@
+use std::collections::HashMap;
+
+use chrono::DateTime;
+use chrono::Local;
+
+use serde::Deserialize;
+use serde_json::Value;
+
 use wasm_bindgen::JsCast;
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
+
+use reqwasm::http::Request;
+use reqwasm::http::Response;
+use reqwasm::Error;
 
 use yew::prelude::*;
 use yew_router::prelude::*;
@@ -44,7 +56,7 @@ fn switch(routes: &Route) -> Html {
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct TextInputProps {
-    pub on_change: Callback<String>,
+    pub on_submit: Callback<String>,
 }
 
 fn get_value_from_input_event(e: InputEvent) -> String {
@@ -64,13 +76,14 @@ fn get_value_from_input_event(e: InputEvent) -> String {
 // * Convert the state back to &str to avoid all the copying.
 //   * Maybe going to leave this alone? We got into a lot of lifetime issues that I didn't
 //     want to deal with right now.
+// * Deal with paging from GitHub
 
 /// Controlled Text Input Component
 #[function_component(TextInput)]
 pub fn text_input(props: &TextInputProps) -> Html {
     let field_contents = use_state(|| String::from(""));
 
-    let TextInputProps { on_change } = props.clone();
+    let TextInputProps { on_submit } = props.clone();
 
     let oninput = {
         let field_contents = field_contents.clone();
@@ -82,7 +95,7 @@ pub fn text_input(props: &TextInputProps) -> Html {
     let onclick: Callback<MouseEvent> = {
         let field_contents = field_contents.clone();
         Callback::from(move |_| {
-            on_change.emit((*field_contents).clone());
+            on_submit.emit((*field_contents).clone());
         })
     };
 
@@ -94,11 +107,90 @@ pub fn text_input(props: &TextInputProps) -> Html {
     }
 }
 
+#[derive(Clone, PartialEq, Deserialize, Debug)]
+struct Repository {
+    id: usize,
+    name: String,
+    description: Option<String>,
+    archived: bool,
+    updated_at: DateTime<Local>,
+    pushed_at: DateTime<Local>,
+
+    #[serde(flatten)]
+    extras: HashMap<String, Value>,
+}
+
+#[derive(Clone, PartialEq, Properties)]
+pub struct RepositoryListProps {
+    pub organization: String,
+}
+
+// Things to work on, 30 July 2022
+//  * Do something sensible about error handling
+//  * Turn list of repositories into a checkbox list
+
+// Do something about paging.
+
+#[function_component(RepositoryList)]
+pub fn repository_list(props: &RepositoryListProps) -> Html {
+    let RepositoryListProps { organization } = props;
+    web_sys::console::log_1(&format!("RepositoryList called with organization {}.", organization).into());
+    let repositories = use_state(|| vec![]);
+    {
+        let repositories = repositories.clone();
+        let organization = organization.clone();
+        use_effect_with_deps(move |organization| {
+            web_sys::console::log_1(&format!("use_effect_with_deps called with organization {}.", organization).into());
+            let organization = organization.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                web_sys::console::log_1(&format!("spawn_local called with organization {}.", organization).into());
+                let request_url = format!("/orgs/{org}/repos?sort=pushed&direction=asc", 
+                                                    org=organization);
+                let response = Request::get(&request_url).send().await.unwrap();
+                let repos_result: Vec<Repository> = response.json().await.unwrap();
+                repositories.set(repos_result);
+            });
+            || ()
+        }, organization);
+    }
+
+    if repositories.is_empty() {
+        html! {
+            <p>{ "Loading…" }</p>
+        }
+    } else {
+        repositories.iter()
+                    .filter(|repository| { !repository.archived })
+                    .map(|repository: &Repository| {
+            html! {
+                <div>
+                    if repository.archived {
+                        <p class="text-2xl text-red-300">{ repository.name.clone() }</p>
+                    } else {
+                        <h2 class="text-2xl">{ repository.name.clone() }</h2>
+                    }
+                    if let Some(description) = &repository.description {
+                        <p class="text-green-300">{ 
+                            description.clone() 
+                        }</p>
+                    } else {
+                        <p class="text-blue-300">{
+                            "There was no description for this repository"
+                        }</p>
+                    }
+                    <p>{ format!("Last updated on {}", repository.updated_at.clone().format("%Y-%m-%d")) }</p>
+                    <p>{ format!("Last pushed to on {}", repository.pushed_at.clone().format("%Y-%m-%d")) }</p>
+                </div>
+            }
+        }).collect()
+    }
+}
+
 #[function_component(HomePage)]
 fn home_page() -> Html {
     let organization = use_state(|| String::from(""));
 
-    let on_change: Callback<String> = {
+    let on_submit: Callback<String> = {
         let organization = organization.clone();
         Callback::from(move |string| { 
             organization.set(string)
@@ -115,13 +207,14 @@ fn home_page() -> Html {
 
             <div>
                 <p>{ "Enter either an organization or a GitHub Classroom"}</p>
-                <TextInput {on_change} />
+                <TextInput {on_submit} />
             </div>
 
             // Where the list of repositories go
             if !organization.is_empty() {
                 <div>
                     <h2 class="text-2xl">{ format!("The list of repositories for the organization {}", (*organization).clone()) }</h2>
+                    <RepositoryList key={(*organization).clone()} organization={(*organization).clone()} />
                 </div>
             }
 
