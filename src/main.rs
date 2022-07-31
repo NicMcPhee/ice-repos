@@ -1,3 +1,8 @@
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![warn(clippy::unwrap_used)]
+#![warn(clippy::expect_used)]
+
 use std::collections::HashMap;
 
 use chrono::DateTime;
@@ -11,8 +16,6 @@ use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
 
 use reqwasm::http::Request;
-use reqwasm::http::Response;
-use reqwasm::Error;
 
 use yew::prelude::*;
 use yew_router::prelude::*;
@@ -88,7 +91,7 @@ pub fn text_input(props: &TextInputProps) -> Html {
     let oninput = {
         let field_contents = field_contents.clone();
         Callback::from(move |input_event: InputEvent| {
-            field_contents.set(get_value_from_input_event(input_event))
+            field_contents.set(get_value_from_input_event(input_event));
         })
     };
 
@@ -135,7 +138,7 @@ pub struct RepositoryListProps {
 pub fn repository_list(props: &RepositoryListProps) -> Html {
     let RepositoryListProps { organization } = props;
     web_sys::console::log_1(&format!("RepositoryList called with organization {}.", organization).into());
-    let repositories = use_state(|| vec![]);
+    let repositories = use_state(Vec::new);
     {
         let repositories = repositories.clone();
         let organization = organization.clone();
@@ -193,7 +196,7 @@ fn home_page() -> Html {
     let on_submit: Callback<String> = {
         let organization = organization.clone();
         Callback::from(move |string| { 
-            organization.set(string)
+            organization.set(string);
             // web_sys::console::log_1(&format!("We got <{}> from the text input!", string).into()) 
         })
     };
