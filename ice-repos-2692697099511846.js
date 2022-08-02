@@ -1,26 +1,6 @@
 
 let wasm;
 
-const heap = new Array(32).fill(undefined);
-
-heap.push(undefined, null, true, false);
-
-function getObject(idx) { return heap[idx]; }
-
-let heap_next = heap.length;
-
-function dropObject(idx) {
-    if (idx < 36) return;
-    heap[idx] = heap_next;
-    heap_next = idx;
-}
-
-function takeObject(idx) {
-    const ret = getObject(idx);
-    dropObject(idx);
-    return ret;
-}
-
 const cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });
 
 cachedTextDecoder.decode();
@@ -38,6 +18,12 @@ function getStringFromWasm0(ptr, len) {
     return cachedTextDecoder.decode(getUint8Memory0().subarray(ptr, ptr + len));
 }
 
+const heap = new Array(32).fill(undefined);
+
+heap.push(undefined, null, true, false);
+
+let heap_next = heap.length;
+
 function addHeapObject(obj) {
     if (heap_next === heap.length) heap.push(heap.length + 1);
     const idx = heap_next;
@@ -45,6 +31,20 @@ function addHeapObject(obj) {
 
     heap[idx] = obj;
     return idx;
+}
+
+function getObject(idx) { return heap[idx]; }
+
+function dropObject(idx) {
+    if (idx < 36) return;
+    heap[idx] = heap_next;
+    heap_next = idx;
+}
+
+function takeObject(idx) {
+    const ret = getObject(idx);
+    dropObject(idx);
+    return ret;
 }
 
 let WASM_VECTOR_LEN = 0;
@@ -319,12 +319,12 @@ async function load(module, imports) {
 function getImports() {
     const imports = {};
     imports.wbg = {};
-    imports.wbg.__wbindgen_object_drop_ref = function(arg0) {
-        takeObject(arg0);
-    };
     imports.wbg.__wbindgen_string_new = function(arg0, arg1) {
         const ret = getStringFromWasm0(arg0, arg1);
         return addHeapObject(ret);
+    };
+    imports.wbg.__wbindgen_object_drop_ref = function(arg0) {
+        takeObject(arg0);
     };
     imports.wbg.__wbindgen_json_serialize = function(arg0, arg1) {
         const obj = getObject(arg1);
@@ -654,16 +654,16 @@ function getImports() {
     imports.wbg.__wbindgen_throw = function(arg0, arg1) {
         throw new Error(getStringFromWasm0(arg0, arg1));
     };
-    imports.wbg.__wbindgen_closure_wrapper756 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 368, __wbg_adapter_24);
+    imports.wbg.__wbindgen_closure_wrapper759 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 370, __wbg_adapter_24);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper848 = function(arg0, arg1, arg2) {
-        const ret = makeClosure(arg0, arg1, 396, __wbg_adapter_27);
+    imports.wbg.__wbindgen_closure_wrapper851 = function(arg0, arg1, arg2) {
+        const ret = makeClosure(arg0, arg1, 398, __wbg_adapter_27);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper1115 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 458, __wbg_adapter_30);
+    imports.wbg.__wbindgen_closure_wrapper1118 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 460, __wbg_adapter_30);
         return addHeapObject(ret);
     };
 
@@ -699,7 +699,7 @@ function initSync(bytes) {
 
 async function init(input) {
     if (typeof input === 'undefined') {
-        input = new URL('ice-repos-da0c24f9340feadc_bg.wasm', import.meta.url);
+        input = new URL('ice-repos-2692697099511846_bg.wasm', import.meta.url);
     }
     const imports = getImports();
 
