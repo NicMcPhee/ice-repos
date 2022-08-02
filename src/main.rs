@@ -152,7 +152,7 @@ pub struct RepositoryListState {
 
 // Do something about paging.
 
-fn parse_last_page(link_str: String) -> usize {
+fn parse_last_page(link_str: &str) -> usize {
     // I'd just be lazy and split at ",", find where ends with last, split at ";", take first, trim "<" and ">"
     // and let the url crate parse the rest.
     // Suggestion from @esitsu on Twitch, 2 Aug 2022
@@ -184,11 +184,22 @@ fn main() {
 }
      */
 
-    let re = Regex::new(r####"page=(\d+).*rel="last""####).unwrap();
-    let cap = re.captures(&link_str).unwrap();
-    web_sys::console::log_1(&format!("Our capture was <{}>.", &cap[0]).into());
-    cap[0].parse::<usize>().unwrap()
+    // TODO: Should I construct this regex somewhere more "global" so it's no reconstructed every time
+    // this function is called?
+    let re = Regex::new(r#"page=(\d+).*rel="last""#).expect("Constructing the regex for the link text failed");
+    let captures = re.captures(link_str).expect("Applying the regex to the link text failed");
+    web_sys::console::log_1(&format!("Our capture was <{}>.", &captures[1]).into());
+    captures[1].parse::<usize>().expect("Failed to parse last page number from link text")
 }
+
+/*
+ * To make pagination work we'll need to:
+ *   - Parse the total number of pages
+ *   - Emit that back to the parent component
+ *   - Display (with DaisyUI) the pagination controls
+ *   - Send in the desired page through the props
+ *   - Request the correct page
+ */
 
 #[function_component(RepositoryList)]
 pub fn repository_list(props: &RepositoryListProps) -> Html {
@@ -222,10 +233,10 @@ pub fn repository_list(props: &RepositoryListProps) -> Html {
                     Some(link_str) => RepositoryListState {
                         repositories: repos_result,
                         current_page: 1,
-                        last_page: parse_last_page(link_str)
+                        last_page: parse_last_page(&link_str)
                     }
                 };
-                web_sys::console::log_1(&format!("The new repo state is <{:?}>.", repository_list_state).into());
+                web_sys::console::log_1(&format!("The new repo state is <{:?}>.", repo_state).into());
                 repository_list_state.set(repo_state);
             });
             || ()
