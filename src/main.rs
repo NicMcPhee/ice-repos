@@ -8,6 +8,8 @@ use std::collections::HashMap;
 use chrono::DateTime;
 use chrono::Local;
 
+use regex::Regex;
+
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -137,19 +139,68 @@ pub struct RepositoryListProps {
     pub organization: String,
 }
 
+#[derive(Debug)]
+pub struct RepositoryListState {
+    repositories: Vec<Repository>,
+    current_page: usize,
+    last_page: usize,
+}
+
 // Things to work on, 30 July 2022
 //  * Do something sensible about error handling
 //  * Turn list of repositories into a checkbox list
 
 // Do something about paging.
 
+fn parse_last_page(link_str: String) -> usize {
+    // I'd just be lazy and split at ",", find where ends with last, split at ";", take first, trim "<" and ">"
+    // and let the url crate parse the rest.
+    // Suggestion from @esitsu on Twitch, 2 Aug 2022
+
+    // The following is a quick sketch of what @esitsu's suggestion would look like. I think I like that
+    // better than what I'm doing with regex, but I need to quit now.
+    /*
+     use url::Url;
+
+fn main() {
+    let input = r#"<https://api.github.com/user/repos?page=3&per_page=100>; rel="next", <https://api.github.com/user/repos?page=50&per_page=100>; rel="last""#;
+    let output = input
+        .split(",")
+        .find(|x| x.ends_with(r#"rel="last""#))
+        .map(str::trim)
+        .map(|s| s.split_once(";").expect("ok").0)
+        .map(|s| s.trim_start_matches("<"))
+        .map(|s| s.trim_end_matches(">"))
+        .map(|s| s.parse::<Url>().expect("url"))
+        .map(|url| url.query_pairs().find_map(|(k, v)| match k == "page" {
+            true => Some(v.to_string()),
+            false => None,
+        }))
+        .flatten()
+        .map(|s| s.parse::<u32>().expect("u32"))
+        .unwrap_or(1);
+
+    println!("output = {}", output);
+}
+     */
+
+    let re = Regex::new(r####"page=(\d+).*rel="last""####).unwrap();
+    let cap = re.captures(&link_str).unwrap();
+    web_sys::console::log_1(&format!("Our capture was <{}>.", &cap[0]).into());
+    cap[0].parse::<usize>().unwrap()
+}
+
 #[function_component(RepositoryList)]
 pub fn repository_list(props: &RepositoryListProps) -> Html {
     let RepositoryListProps { organization } = props;
     web_sys::console::log_1(&format!("RepositoryList called with organization {}.", organization).into());
-    let repositories = use_state(Vec::new);
+    let repository_list_state = use_state(|| RepositoryListState {
+        repositories: vec![],
+        current_page: 1,
+        last_page: 0 // This is "wrong" and needs to be set after we've gotten our response.
+    });
     {
-        let repositories = repositories.clone();
+        let repository_list_state = repository_list_state.clone();
         let organization = organization.clone();
         use_effect_with_deps(move |organization| {
             web_sys::console::log_1(&format!("use_effect_with_deps called with organization {}.", organization).into());
@@ -159,24 +210,42 @@ pub fn repository_list(props: &RepositoryListProps) -> Html {
                 let request_url = format!("/orgs/{org}/repos?sort=pushed&direction=asc", 
                                                     org=organization);
                 let response = Request::get(&request_url).send().await.unwrap();
+                let link = response.headers().get("link");
+                web_sys::console::log_1(&format!("The link element of the header was <{:?}>.", link).into());
                 let repos_result: Vec<Repository> = response.json().await.unwrap();
-                repositories.set(repos_result);
+                let repo_state: RepositoryListState = match link {
+                    None => RepositoryListState {
+                        repositories: repos_result,
+                        current_page: 1,
+                        last_page: 1
+                    },
+                    Some(link_str) => RepositoryListState {
+                        repositories: repos_result,
+                        current_page: 1,
+                        last_page: parse_last_page(link_str)
+                    }
+                };
+                web_sys::console::log_1(&format!("The new repo state is <{:?}>.", repository_list_state).into());
+                repository_list_state.set(repo_state);
             });
             || ()
         }, organization);
     }
 
-    if repositories.is_empty() {
+    if repository_list_state.repositories.is_empty() {
         html! {
             <p>{ "Loading…" }</p>
         }
     } else {
-        repositories.iter()
-                    .filter(|repository| { !repository.archived })
+        repository_list_state.repositories.iter()
                     .map(|repository: &Repository| {
             html! {
                 <div>
-                    <h2 class="text-2xl">{ repository.name.clone() }</h2>
+                    if repository.archived {
+                        <h2 class="text-2xl text-gray-300">{ repository.name.clone() }</h2>
+                    } else {
+                        <h2 class="text-2xl">{ repository.name.clone() }</h2>
+                    }
                     if let Some(description) = &repository.description {
                         <p class="text-green-700">{ 
                             description.clone() 
