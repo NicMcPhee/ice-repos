@@ -103,9 +103,27 @@ pub fn text_input(props: &TextInputProps) -> Html {
     };
 
     html! {
-        <div class="flex space-x-1">
-            <input class="flex-auto w-64 bg-gray-600" type="text" {oninput} value={ (*field_contents).clone() } size=40 placeholder="Enter an organization name here" />
-            <button {onclick} class="bg-gray-800 flex-none p-4">{ "Submit" }</button>
+        <div class="hero min-h-fit bg-base-200">
+            <div class="hero-content flex-col lg:flex-row">
+                <div class="text-center lg:text-left">
+                <h1 class="text-5xl font-bold">{ "Welcome to" }</h1>
+                <h1 class="text-5xl font-bold">{ "ice-repos!" }</h1>
+                <p class="py-6">{ "A tool for archiving groups of GitHub repos" }</p>
+                </div>
+                <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100">
+                <div class="card-body">
+                    <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">{ "What organization would you like to archive repositories for?" }</span>
+                    </label>
+                    <input type="text" placeholder="organization" class="input input-bordered" {oninput} value={ (*field_contents).clone() }/>
+                    </div>
+                    <div class="form-control mt-6">
+                    <button type="submit" class="btn btn-primary" {onclick}>{ "Submit" }</button>
+                    </div>
+                </div>
+                </div>
+            </div>
         </div>
     }
 }
@@ -203,15 +221,7 @@ fn home_page() -> Html {
 
     html! {
         <div class="grid grid-cols-1 divide-y flex flex-col space-y-8">
-            <div>
-                <p class="text-4xl">{ "Welcome to Ice Repos" }</p> 
-                <p class="text-2xl">{ "A tool for archiving groups of GitHub repos" }</p> 
-            </div>
-
-            <div>
-                <p>{ "Enter either an organization or a GitHub Classroom"}</p>
-                <TextInput {on_submit} />
-            </div>
+            <TextInput {on_submit} />
 
             // Where the list of repositories go
             if !organization.is_empty() {
