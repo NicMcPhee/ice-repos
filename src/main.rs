@@ -185,17 +185,13 @@ pub fn repository_list(props: &RepositoryListProps) -> Html {
                     .map(|repository: &Repository| {
             html! {
                 <div>
-                    if repository.archived {
-                        <p class="text-2xl text-red-300">{ repository.name.clone() }</p>
-                    } else {
-                        <h2 class="text-2xl">{ repository.name.clone() }</h2>
-                    }
+                    <h2 class="text-2xl">{ repository.name.clone() }</h2>
                     if let Some(description) = &repository.description {
-                        <p class="text-green-300">{ 
+                        <p class="text-green-700">{ 
                             description.clone() 
                         }</p>
                     } else {
-                        <p class="text-blue-300">{
+                        <p class="text-blue-700">{
                             "There was no description for this repository"
                         }</p>
                     }
