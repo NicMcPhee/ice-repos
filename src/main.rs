@@ -58,7 +58,7 @@ fn switch(routes: &Route) -> Html {
 }
 
 #[derive(Clone, PartialEq, Properties)]
-pub struct TextInputProps {
+pub struct OrganizationEntryProps {
     pub on_submit: Callback<String>,
 }
 
@@ -82,11 +82,11 @@ fn get_value_from_input_event(e: InputEvent) -> String {
 // * Deal with paging from GitHub
 
 /// Controlled Text Input Component
-#[function_component(TextInput)]
-pub fn text_input(props: &TextInputProps) -> Html {
+#[function_component(OrganizationEntry)]
+pub fn organization_entry(props: &OrganizationEntryProps) -> Html {
     let field_contents = use_state(|| String::from(""));
 
-    let TextInputProps { on_submit } = props.clone();
+    let OrganizationEntryProps { on_submit } = props.clone();
 
     let oninput = {
         let field_contents = field_contents.clone();
@@ -103,25 +103,16 @@ pub fn text_input(props: &TextInputProps) -> Html {
     };
 
     html! {
-        <div class="hero min-h-fit bg-base-200">
-            <div class="hero-content flex-col lg:flex-row">
-                <div class="text-center lg:text-left">
-                <h1 class="text-5xl font-bold">{ "Welcome to" }</h1>
-                <h1 class="text-5xl font-bold">{ "ice-repos!" }</h1>
-                <p class="py-6">{ "A tool for archiving groups of GitHub repos" }</p>
+        <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100">
+            <div class="card-body">
+                <div class="form-control">
+                <label class="label">
+                    <span class="label-text">{ "What organization would you like to archive repositories for?" }</span>
+                </label>
+                <input type="text" placeholder="organization" class="input input-bordered" {oninput} value={ (*field_contents).clone() }/>
                 </div>
-                <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100">
-                <div class="card-body">
-                    <div class="form-control">
-                    <label class="label">
-                        <span class="label-text">{ "What organization would you like to archive repositories for?" }</span>
-                    </label>
-                    <input type="text" placeholder="organization" class="input input-bordered" {oninput} value={ (*field_contents).clone() }/>
-                    </div>
-                    <div class="form-control mt-6">
-                    <button type="submit" class="btn btn-primary" {onclick}>{ "Submit" }</button>
-                    </div>
-                </div>
+                <div class="form-control mt-6">
+                <button type="submit" class="btn btn-primary" {onclick}>{ "Submit" }</button>
                 </div>
             </div>
         </div>
@@ -203,6 +194,17 @@ pub fn repository_list(props: &RepositoryListProps) -> Html {
     }
 }
 
+#[function_component(Welcome)]
+fn welcome() -> Html {
+    html! {
+        <div class="text-center lg:text-left">
+            <h1 class="text-5xl font-bold">{ "Welcome to" }</h1>
+            <h1 class="text-5xl font-bold">{ "ice-repos!" }</h1>
+            <p class="py-6">{ "A tool for archiving groups of GitHub repos" }</p>
+        </div>
+    }
+}
+
 #[function_component(HomePage)]
 fn home_page() -> Html {
     let organization = use_state(|| String::from(""));
@@ -217,7 +219,12 @@ fn home_page() -> Html {
 
     html! {
         <div class="grid grid-cols-1 divide-y flex flex-col space-y-8">
-            <TextInput {on_submit} />
+            <div class="hero min-h-fit bg-base-200">
+                <div class="hero-content flex-col lg:flex-row">
+                    <Welcome />
+                    <OrganizationEntry {on_submit} />
+                </div>
+            </div>
 
             // Where the list of repositories go
             if !organization.is_empty() {
