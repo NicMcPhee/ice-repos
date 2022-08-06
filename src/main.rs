@@ -135,12 +135,12 @@ struct Repository {
 }
 
 #[derive(Clone, PartialEq, Properties)]
-pub struct RepositoryListProps {
+pub struct RepositoryPaginatorProps {
     pub organization: String,
 }
 
 #[derive(Debug)]
-pub struct RepositoryListState {
+pub struct RepositoryPaginatorState {
     repositories: Vec<Repository>,
     current_page: usize,
     last_page: usize,
@@ -181,17 +181,20 @@ fn parse_last_page(link_str: String) -> usize {
  *   - Request the correct page
  */
 
-#[function_component(RepositoryList)]
-pub fn repository_list(props: &RepositoryListProps) -> Html {
-    let RepositoryListProps { organization } = props;
-    web_sys::console::log_1(&format!("RepositoryList called with organization {}.", organization).into());
-    let repository_list_state = use_state(|| RepositoryListState {
+// #[function_component(RepositoryListDisplay)]
+// pub 
+
+#[function_component(RepositoryPaginator)]
+pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
+    let RepositoryPaginatorProps { organization } = props;
+    web_sys::console::log_1(&format!("RepositoryPaginator called with organization {}.", organization).into());
+    let repository_paginator_state = use_state(|| RepositoryPaginatorState {
         repositories: vec![],
         current_page: 1,
         last_page: 0 // This is "wrong" and needs to be set after we've gotten our response.
     });
     {
-        let repository_list_state = repository_list_state.clone();
+        let repository_paginator_state = repository_paginator_state.clone();
         let organization = organization.clone();
         use_effect_with_deps(move |organization| {
             web_sys::console::log_1(&format!("use_effect_with_deps called with organization {}.", organization).into());
@@ -204,24 +207,24 @@ pub fn repository_list(props: &RepositoryListProps) -> Html {
                 let link = response.headers().get("link");
                 web_sys::console::log_1(&format!("The link element of the header was <{:?}>.", link).into());
                 let repos_result: Vec<Repository> = response.json().await.unwrap();
-                let repo_state = RepositoryListState {
+                let repo_state = RepositoryPaginatorState {
                     repositories: repos_result,
                     current_page: 1,
                     last_page: link.map_or(1, parse_last_page)
                 };
                 web_sys::console::log_1(&format!("The new repo state is <{:?}>.", repo_state).into());
-                repository_list_state.set(repo_state);
+                repository_paginator_state.set(repo_state);
             });
             || ()
         }, organization);
     }
 
-    if repository_list_state.repositories.is_empty() {
+    if repository_paginator_state.repositories.is_empty() {
         html! {
             <p>{ "Loading…" }</p>
         }
     } else {
-        repository_list_state.repositories.iter()
+        repository_paginator_state.repositories.iter()
                     .map(|repository: &Repository| {
             html! {
                 <div>
@@ -283,7 +286,7 @@ fn home_page() -> Html {
             if !organization.is_empty() {
                 <div>
                     <h2 class="text-2xl">{ format!("The list of repositories for the organization {}", (*organization).clone()) }</h2>
-                    <RepositoryList key={(*organization).clone()} organization={(*organization).clone()} />
+                    <RepositoryPaginator key={(*organization).clone()} organization={(*organization).clone()} />
                 </div>
             }
 
