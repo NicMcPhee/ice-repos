@@ -181,8 +181,44 @@ fn parse_last_page(link_str: String) -> usize {
  *   - Request the correct page
  */
 
-// #[function_component(RepositoryListDisplay)]
-// pub 
+#[derive(Clone, PartialEq, Properties)]
+pub struct RepositoryListProps {
+    repositories: Vec<Repository>
+}
+
+#[function_component(RepositoryList)]
+pub fn repository_list(props: &RepositoryListProps) -> Html {
+    let RepositoryListProps { repositories } = props;
+    if repositories.is_empty() {
+        html! {
+            <p>{ "Loading…" }</p>
+        }
+    } else {
+        repositories.iter()
+                    .map(|repository: &Repository| {
+            html! {
+                <div>
+                    if repository.archived {
+                        <h2 class="text-2xl text-gray-300">{ repository.name.clone() }</h2>
+                    } else {
+                        <h2 class="text-2xl">{ repository.name.clone() }</h2>
+                    }
+                    if let Some(description) = &repository.description {
+                        <p class="text-green-700">{ 
+                            description.clone() 
+                        }</p>
+                    } else {
+                        <p class="text-blue-700">{
+                            "There was no description for this repository"
+                        }</p>
+                    }
+                    <p>{ format!("Last updated on {}", repository.updated_at.clone().format("%Y-%m-%d")) }</p>
+                    <p>{ format!("Last pushed to on {}", repository.pushed_at.clone().format("%Y-%m-%d")) }</p>
+                </div>
+            }
+        }).collect()
+    }
+}
 
 #[function_component(RepositoryPaginator)]
 pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
@@ -219,34 +255,9 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
         }, organization);
     }
 
-    if repository_paginator_state.repositories.is_empty() {
-        html! {
-            <p>{ "Loading…" }</p>
-        }
-    } else {
-        repository_paginator_state.repositories.iter()
-                    .map(|repository: &Repository| {
-            html! {
-                <div>
-                    if repository.archived {
-                        <h2 class="text-2xl text-gray-300">{ repository.name.clone() }</h2>
-                    } else {
-                        <h2 class="text-2xl">{ repository.name.clone() }</h2>
-                    }
-                    if let Some(description) = &repository.description {
-                        <p class="text-green-700">{ 
-                            description.clone() 
-                        }</p>
-                    } else {
-                        <p class="text-blue-700">{
-                            "There was no description for this repository"
-                        }</p>
-                    }
-                    <p>{ format!("Last updated on {}", repository.updated_at.clone().format("%Y-%m-%d")) }</p>
-                    <p>{ format!("Last pushed to on {}", repository.pushed_at.clone().format("%Y-%m-%d")) }</p>
-                </div>
-            }
-        }).collect()
+    html! {
+        // TODO: I don't like this .clone(), but passing references got us into lifetime hell.
+        <RepositoryList repositories={ repository_paginator_state.repositories.clone() } />
     }
 }
 
