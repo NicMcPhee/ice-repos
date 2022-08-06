@@ -234,7 +234,7 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
             let organization = organization.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 web_sys::console::log_1(&format!("spawn_local called with organization {}.", organization).into());
-                let request_url = format!("/orgs/{org}/repos?sort=pushed&direction=asc", 
+                let request_url = format!("/orgs/{org}/repos?sort=pushed&direction=asc&per_page=5", 
                                                     org=organization);
                 let response = Request::get(&request_url).send().await.unwrap();
                 let link = response.headers().get("link");
@@ -253,8 +253,27 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
     }
 
     html! {
-        // TODO: I don't like this .clone(), but passing references got us into lifetime hell.
-        <RepositoryList repositories={ repository_paginator_state.repositories.clone() } />
+        <>
+            if repository_paginator_state.last_page > 0 {
+                <div class="btn-group">
+                {
+                    // Not sure why we need the containing pair of curly braces, but
+                    // it's probably because we're inside an `html!` macro call. I
+                    // might be able to remove the outer `html!` and add the `RepositoryList`
+                    // component call to this iterator in some fashion.
+                    (1..repository_paginator_state.last_page+1).map(|page_number| {
+                        html! {
+                            <button class={ if page_number == repository_paginator_state.current_page { "btn btn-active" } else { "btn" }}>
+                                { page_number }
+                            </button>
+                        }
+                    }).collect::<Html>()
+                }
+                </div>
+            }
+            // TODO: I don't like this .clone(), but passing references got us into lifetime hell.
+            <RepositoryList repositories={ repository_paginator_state.repositories.clone() } />
+        </>
     }
 }
 
