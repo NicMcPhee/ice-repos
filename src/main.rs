@@ -152,42 +152,22 @@ pub struct RepositoryListState {
 
 // Do something about paging.
 
-fn parse_last_page(link_str: &str) -> usize {
-    // I'd just be lazy and split at ",", find where ends with last, split at ";", take first, trim "<" and ">"
-    // and let the url crate parse the rest.
-    // Suggestion from @esitsu on Twitch, 2 Aug 2022
-
-    // The following is a quick sketch of what @esitsu's suggestion would look like. I think I like that
-    // better than what I'm doing with regex, but I need to quit now.
-    /*
-     use url::Url;
-
-fn main() {
-    let input = r#"<https://api.github.com/user/repos?page=3&per_page=100>; rel="next", <https://api.github.com/user/repos?page=50&per_page=100>; rel="last""#;
-    let output = input
-        .split(",")
-        .find(|x| x.ends_with(r#"rel="last""#))
-        .map(str::trim)
-        .map(|s| s.split_once(";").expect("ok").0)
-        .map(|s| s.trim_start_matches("<"))
-        .map(|s| s.trim_end_matches(">"))
-        .map(|s| s.parse::<Url>().expect("url"))
-        .map(|url| url.query_pairs().find_map(|(k, v)| match k == "page" {
-            true => Some(v.to_string()),
-            false => None,
-        }))
-        .flatten()
-        .map(|s| s.parse::<u32>().expect("u32"))
-        .unwrap_or(1);
-
-    println!("output = {}", output);
-}
-     */
-
+/*
+ * This parses the `last` component of the link field in the response header from
+ * GitHub, which tells us how many pages there are.
+ * 
+ * The link field looks like:
+ * 
+ * <https://api.github.com/organizations/18425666/repos?page=1&per_page=5>; rel="prev", <https://api.github.com/organizations/18425666/repos?page=3&per_page=5>; rel="next", <https://api.github.com/organizations/18425666/repos?page=5&per_page=5>; rel="last", <https://api.github.com/organizations/18425666/repos?page=1&per_page=5>; rel="first"
+ */
+// TODO: I'd like to bring `link_str` back to being `&str` instead of `String`,
+// but that doesn't work if I use `parse_last_page` directly as an argument in
+// `map_or` in the `repository_list()` function below.
+fn parse_last_page(link_str: String) -> usize {
     // TODO: Should I construct this regex somewhere more "global" so it's no reconstructed every time
     // this function is called?
     let re = Regex::new(r#"page=(\d+).*rel="last""#).expect("Constructing the regex for the link text failed");
-    let captures = re.captures(link_str).expect("Applying the regex to the link text failed");
+    let captures = re.captures(&link_str).expect("Applying the regex to the link text failed");
     web_sys::console::log_1(&format!("Our capture was <{}>.", &captures[1]).into());
     captures[1].parse::<usize>().expect("Failed to parse last page number from link text")
 }
@@ -224,17 +204,10 @@ pub fn repository_list(props: &RepositoryListProps) -> Html {
                 let link = response.headers().get("link");
                 web_sys::console::log_1(&format!("The link element of the header was <{:?}>.", link).into());
                 let repos_result: Vec<Repository> = response.json().await.unwrap();
-                let repo_state: RepositoryListState = match link {
-                    None => RepositoryListState {
-                        repositories: repos_result,
-                        current_page: 1,
-                        last_page: 1
-                    },
-                    Some(link_str) => RepositoryListState {
-                        repositories: repos_result,
-                        current_page: 1,
-                        last_page: parse_last_page(&link_str)
-                    }
+                let repo_state = RepositoryListState {
+                    repositories: repos_result,
+                    current_page: 1,
+                    last_page: link.map_or(1, parse_last_page)
                 };
                 web_sys::console::log_1(&format!("The new repo state is <{:?}>.", repo_state).into());
                 repository_list_state.set(repo_state);
