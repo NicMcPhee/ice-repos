@@ -160,10 +160,7 @@ pub struct RepositoryPaginatorState {
  * 
  * <https://api.github.com/organizations/18425666/repos?page=1&per_page=5>; rel="prev", <https://api.github.com/organizations/18425666/repos?page=3&per_page=5>; rel="next", <https://api.github.com/organizations/18425666/repos?page=5&per_page=5>; rel="last", <https://api.github.com/organizations/18425666/repos?page=1&per_page=5>; rel="first"
  */
-// TODO: I'd like to bring `link_str` back to being `&str` instead of `String`,
-// but that doesn't work if I use `parse_last_page` directly as an argument in
-// `map_or` in the `repository_list()` function below.
-fn parse_last_page(link_str: String) -> usize {
+fn parse_last_page(link_str: &str) -> usize {
     // TODO: Should I construct this regex somewhere more "global" so it's no reconstructed every time
     // this function is called?
     let re = Regex::new(r#"page=(\d+).*rel="last""#).expect("Constructing the regex for the link text failed");
@@ -246,7 +243,7 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
                 let repo_state = RepositoryPaginatorState {
                     repositories: repos_result,
                     current_page: 1,
-                    last_page: link.map_or(1, parse_last_page)
+                    last_page: link.as_deref().map_or(1, parse_last_page)
                 };
                 web_sys::console::log_1(&format!("The new repo state is <{:?}>.", repo_state).into());
                 repository_paginator_state.set(repo_state);
