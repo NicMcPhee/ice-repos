@@ -1,7 +1,7 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
-#![warn(clippy::unwrap_used)]
-#![warn(clippy::expect_used)]
+// #![warn(clippy::unwrap_used)]
+// #![warn(clippy::expect_used)]
 
 use std::collections::HashMap;
 
@@ -164,7 +164,7 @@ fn parse_last_page(link_str: &str) -> usize {
     // TODO: Should I construct this regex somewhere more "global" so it's no reconstructed every time
     // this function is called?
     let re = Regex::new(r#"page=(\d+).*rel="last""#).expect("Constructing the regex for the link text failed");
-    let captures = re.captures(&link_str).expect("Applying the regex to the link text failed");
+    let captures = re.captures(link_str).expect("Applying the regex to the link text failed");
     web_sys::console::log_1(&format!("Our capture was <{}>.", &captures[1]).into());
     captures[1].parse::<usize>().expect("Failed to parse last page number from link text")
 }
@@ -179,12 +179,12 @@ fn parse_last_page(link_str: &str) -> usize {
  */
 
 #[derive(Clone, PartialEq, Properties)]
-pub struct RepositoryListProps {
+struct RepositoryListProps {
     repositories: Vec<Repository>
 }
 
 #[function_component(RepositoryList)]
-pub fn repository_list(props: &RepositoryListProps) -> Html {
+fn repository_list(props: &RepositoryListProps) -> Html {
     let RepositoryListProps { repositories } = props;
     if repositories.is_empty() {
         html! {
@@ -200,14 +200,11 @@ pub fn repository_list(props: &RepositoryListProps) -> Html {
                     } else {
                         <h2 class="text-2xl">{ repository.name.clone() }</h2>
                     }
-                    if let Some(description) = &repository.description {
-                        <p class="text-green-700">{ 
-                            description.clone() 
-                        }</p>
-                    } else {
-                        <p class="text-blue-700">{
-                            "There was no description for this repository"
-                        }</p>
+                    {
+                        repository.description.as_ref().map_or_else(
+                            || html! { <p class="text-blue-700">{ "There was no description for this repository "}</p> },
+                            |s| html! { <p class="text-green-700">{ s.clone() }</p> }
+                        )
                     }
                     <p>{ format!("Last updated on {}", repository.updated_at.clone().format("%Y-%m-%d")) }</p>
                     <p>{ format!("Last pushed to on {}", repository.pushed_at.clone().format("%Y-%m-%d")) }</p>
@@ -261,7 +258,7 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
                     // it's probably because we're inside an `html!` macro call. I
                     // might be able to remove the outer `html!` and add the `RepositoryList`
                     // component call to this iterator in some fashion.
-                    (1..repository_paginator_state.last_page+1).map(|page_number| {
+                    (1..=repository_paginator_state.last_page).map(|page_number| {
                         html! {
                             <button class={ if page_number == repository_paginator_state.current_page { "btn btn-active" } else { "btn" }}>
                                 { page_number }
