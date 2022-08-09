@@ -214,6 +214,23 @@ fn repository_list(props: &RepositoryListProps) -> Html {
 
 #[function_component(RepositoryPaginator)]
 pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
+    fn paginator_button_class(page_number: usize, current_page: usize) -> String {
+        if page_number == current_page { "btn btn-active".to_string() } else { "btn".to_string() }
+    }
+
+    fn make_button_callback(page_number: usize, repository_paginator_state: UseStateHandle<RepositoryPaginatorState>) -> Callback<MouseEvent> {
+        Callback::from(move |_| {
+            let repo_state = RepositoryPaginatorState {
+                repositories: vec![],
+                current_page: page_number,
+                last_page: repository_paginator_state.last_page
+            };
+            web_sys::console::log_1(&format!("make_button_callback called with page number {page_number}.").into());
+            web_sys::console::log_1(&format!("New state is {repo_state:?}.").into());
+            repository_paginator_state.set(repo_state);
+        })
+    }
+
     let RepositoryPaginatorProps { organization } = props;
     web_sys::console::log_1(&format!("RepositoryPaginator called with organization {}.", organization).into());
     let repository_paginator_state = use_state(|| RepositoryPaginatorState {
@@ -256,9 +273,13 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
                     // it's probably because we're inside an `html!` macro call. I
                     // might be able to remove the outer `html!` and add the `RepositoryList`
                     // component call to this iterator in some fashion.
+                    //
+                    // It's possible that `html_nested` would be a useful tool here.
+                    // https://docs.rs/yew/latest/yew/macro.html_nested.html
                     (1..=repository_paginator_state.last_page).map(|page_number| {
                         html! {
-                            <button class={ if page_number == repository_paginator_state.current_page { "btn btn-active" } else { "btn" }}>
+                            <button class={ paginator_button_class(page_number, repository_paginator_state.current_page) }
+                                    onclick={ make_button_callback(page_number, repository_paginator_state.clone()) }>
                                 { page_number }
                             </button>
                         }
