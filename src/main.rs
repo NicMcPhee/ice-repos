@@ -241,13 +241,14 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
     {
         let repository_paginator_state = repository_paginator_state.clone();
         let organization = organization.clone();
-        use_effect_with_deps(move |organization| {
+        let current_page = repository_paginator_state.current_page;
+        use_effect_with_deps(move |(organization, current_page)| {
             web_sys::console::log_1(&format!("use_effect_with_deps called with organization {}.", organization).into());
             let organization = organization.clone();
+            let current_page = *current_page;
             wasm_bindgen_futures::spawn_local(async move {
                 web_sys::console::log_1(&format!("spawn_local called with organization {}.", organization).into());
-                let request_url = format!("/orgs/{org}/repos?sort=pushed&direction=asc&per_page=5", 
-                                                    org=organization);
+                let request_url = format!("/orgs/{organization}/repos?sort=pushed&direction=asc&per_page=5&page={current_page}");
                 let response = Request::get(&request_url).send().await.unwrap();
                 let link = response.headers().get("link");
                 web_sys::console::log_1(&format!("The link element of the header was <{:?}>.", link).into());
@@ -261,7 +262,7 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
                 repository_paginator_state.set(repo_state);
             });
             || ()
-        }, organization);
+        }, (organization, current_page));
     }
 
     html! {
