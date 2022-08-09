@@ -4,6 +4,7 @@
 // #![warn(clippy::expect_used)]
 
 use std::collections::HashMap;
+use once_cell::sync::Lazy;
 
 use chrono::DateTime;
 use chrono::Local;
@@ -150,8 +151,6 @@ pub struct RepositoryPaginatorState {
 //  * Do something sensible about error handling
 //  * Turn list of repositories into a checkbox list
 
-// Do something about paging.
-
 /*
  * This parses the `last` component of the link field in the response header from
  * GitHub, which tells us how many pages there are.
@@ -161,10 +160,9 @@ pub struct RepositoryPaginatorState {
  * <https://api.github.com/organizations/18425666/repos?page=1&per_page=5>; rel="prev", <https://api.github.com/organizations/18425666/repos?page=3&per_page=5>; rel="next", <https://api.github.com/organizations/18425666/repos?page=5&per_page=5>; rel="last", <https://api.github.com/organizations/18425666/repos?page=1&per_page=5>; rel="first"
  */
 fn parse_last_page(link_str: &str) -> usize {
-    // TODO: Should I construct this regex somewhere more "global" so it's no reconstructed every time
-    // this function is called?
-    let re = Regex::new(r#"page=(\d+).*rel="last""#).expect("Constructing the regex for the link text failed");
-    let captures = re.captures(link_str).expect("Applying the regex to the link text failed");
+    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r#"page=(\d+).*rel="last""#).unwrap());
+
+    let captures = RE.captures(link_str).expect("Applying the regex to the link text failed");
     web_sys::console::log_1(&format!("Our capture was <{}>.", &captures[1]).into());
     captures[1].parse::<usize>().expect("Failed to parse last page number from link text")
 }
