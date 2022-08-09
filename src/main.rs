@@ -232,7 +232,7 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
     }
 
     let RepositoryPaginatorProps { organization } = props;
-    web_sys::console::log_1(&format!("RepositoryPaginator called with organization {}.", organization).into());
+    web_sys::console::log_1(&format!("RepositoryPaginator called with organization {organization}.").into());
     let repository_paginator_state = use_state(|| RepositoryPaginatorState {
         repositories: vec![],
         current_page: 1,
@@ -243,22 +243,22 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
         let organization = organization.clone();
         let current_page = repository_paginator_state.current_page;
         use_effect_with_deps(move |(organization, current_page)| {
-            web_sys::console::log_1(&format!("use_effect_with_deps called with organization {}.", organization).into());
+            web_sys::console::log_1(&format!("use_effect_with_deps called with organization {organization}.").into());
             let organization = organization.clone();
             let current_page = *current_page;
             wasm_bindgen_futures::spawn_local(async move {
-                web_sys::console::log_1(&format!("spawn_local called with organization {}.", organization).into());
+                web_sys::console::log_1(&format!("spawn_local called with organization {organization}.").into());
                 let request_url = format!("/orgs/{organization}/repos?sort=pushed&direction=asc&per_page=5&page={current_page}");
                 let response = Request::get(&request_url).send().await.unwrap();
                 let link = response.headers().get("link");
-                web_sys::console::log_1(&format!("The link element of the header was <{:?}>.", link).into());
+                web_sys::console::log_1(&format!("The link element of the header was <{link:?}>.").into());
                 let repos_result: Vec<Repository> = response.json().await.unwrap();
                 let repo_state = RepositoryPaginatorState {
                     repositories: repos_result,
                     current_page: 1,
                     last_page: link.as_deref().map_or(1, parse_last_page)
                 };
-                web_sys::console::log_1(&format!("The new repo state is <{:?}>.", repo_state).into());
+                web_sys::console::log_1(&format!("The new repo state is <{repo_state:?}>.").into());
                 repository_paginator_state.set(repo_state);
             });
             || ()
@@ -313,7 +313,7 @@ fn home_page() -> Html {
         let organization = organization.clone();
         Callback::from(move |string| { 
             organization.set(string);
-            // web_sys::console::log_1(&format!("We got <{}> from the text input!", string).into()) 
+            // web_sys::console::log_1(&format!("We got <{string}> from the text input!").into()) 
         })
     };
 
