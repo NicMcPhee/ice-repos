@@ -160,7 +160,7 @@ pub struct RepositoryPaginatorState {
  * <https://api.github.com/organizations/18425666/repos?page=1&per_page=5>; rel="prev", <https://api.github.com/organizations/18425666/repos?page=3&per_page=5>; rel="next", <https://api.github.com/organizations/18425666/repos?page=5&per_page=5>; rel="last", <https://api.github.com/organizations/18425666/repos?page=1&per_page=5>; rel="first"
  */
 fn parse_last_page(link_str: &str) -> usize {
-    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r#"page=(\d+).*rel="last""#).unwrap());
+    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r#"[&?]page=(\d+).*rel="last""#).unwrap());
 
     let captures = RE.captures(link_str).expect("Applying the regex to the link text failed");
     web_sys::console::log_1(&format!("Our capture was <{}>.", &captures[1]).into());
@@ -249,7 +249,7 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
 
     html! {
         <>
-            if repository_paginator_state.last_page > 0 {
+            if repository_paginator_state.last_page > 1 {
                 <div class="btn-group">
                 {
                     // Not sure why we need the containing pair of curly braces, but
