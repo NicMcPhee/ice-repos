@@ -4,6 +4,7 @@
 // #![warn(clippy::expect_used)]
 
 use std::collections::HashMap;
+use std::num::ParseIntError;
 
 use chrono::DateTime;
 use chrono::Local;
@@ -153,7 +154,27 @@ pub struct RepositoryPaginatorState {
 // Things to work on, 13 August 2022
 //  * Fix the problem with my regex for the pagination, probably by replacing the regex.
 //  * Do something sensible about error handling
+//    * Possibly introduce anyhow, eyre, or error_stack
 //  * Turn list of repositories into a checkbox list
+
+#[derive(Debug)]
+enum LinkParseError {
+    UrlParseError(ParseError),
+    PageEntryMissingError(Url),
+    PageNumParseError(ParseIntError)
+}
+
+impl From<ParseError> for LinkParseError {
+    fn from(e: ParseError) -> Self {
+        Self::UrlParseError(e)
+    }
+}
+
+impl From<ParseIntError> for LinkParseError {
+    fn from(e: ParseIntError) -> Self {
+        Self::PageNumParseError(e)
+    }
+}
 
 /*
  * This parses the `last` component of the link field in the response header from
@@ -163,20 +184,36 @@ pub struct RepositoryPaginatorState {
  * 
  * <https://api.github.com/organizations/18425666/repos?page=1&per_page=5>; rel="prev", <https://api.github.com/organizations/18425666/repos?page=3&per_page=5>; rel="next", <https://api.github.com/organizations/18425666/repos?page=5&per_page=5>; rel="last", <https://api.github.com/organizations/18425666/repos?page=1&per_page=5>; rel="first"
  */
-fn parse_last_page(link_str: &str) -> usize {
-    // This will break if there can ever be a comma in a URL, but that doesn't seem
-    // likely given the structure of these GitHub URLs.
-    let last_url = link_str
+fn parse_last_page(link_str: &str) -> Result<Option<usize>, LinkParseError> {
+    // This split won't do the desired thing if there can ever be a comma in a
+    // URL, but that doesn't seem likely given the structure of these GitHub URLs.
+    let last_entry = link_str
         .split(", ")
-        .find_map(|s| s.trim().strip_suffix(r#"; rel="last""#)).unwrap()
-        .trim_start_matches('<')
+        .find_map(|s| s.trim().strip_suffix(r#"; rel="last""#));
+    // rel="last" is missing if we're on the last page
+    let last_entry = match last_entry {
+        None => return Ok(None),
+        Some(s) => s
+    };
+    // This fails and returns a LinkParseError::UrlParseError if we can't parse the URL.
+    let last_url = last_entry.trim_start_matches('<')
         .trim_end_matches('>')
-        .parse::<Url>().unwrap();
+        .parse::<Url>()?;
     let num_pages_str = last_url.query_pairs()
+        // This returns the None variant if there was no "page" query parameter.
+        // This is an error on GitHub's part (or a major change to their API),
+        // and we'll return a LinkParseError::PageEntryMissingError if it happens.
         .find(|(k, _)| k.eq("page"))
         .map(|(_, v)| v)
-        .unwrap();
-    num_pages_str.parse::<usize>().unwrap()
+        // The following line fails because of an ownership issue. I think that
+        // we're passing ownership of into the closure, but num_pages_str still
+        // points into that and we need to use that in the line after. I suspect
+        // I'll need to clone something.
+        .ok_or_else(|| LinkParseError::PageEntryMissingError(last_url))?;
+    // This fails and returns a LinkParseError::PageNumberParseError if for some
+    // reason the `num_pages_str` can't be parsed to a `usize`. This would also
+    // presumably be an error or major API change on the part of GitHub.
+    Ok(Some(num_pages_str.parse::<usize>()?))
 }
 
 /*
