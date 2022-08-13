@@ -151,8 +151,9 @@ pub struct RepositoryPaginatorState {
     last_page: usize,
 }
 
-// Things to work on, 13 August 2022
-//  * Fix the problem with my regex for the pagination, probably by replacing the regex.
+// Things to work on, 20 August 2022
+//  * Fix the ownership error in `parse_last_page`
+//  * Fix the call to `parse_last_page`, probably using a `match`
 //  * Do something sensible about error handling
 //    * Possibly introduce anyhow, eyre, or error_stack
 //  * Turn list of repositories into a checkbox list
@@ -305,7 +306,14 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
                 let repo_state = RepositoryPaginatorState {
                     repositories: repos_result,
                     current_page: 1,
-                    last_page: link.as_deref().map_or(1, parse_last_page)
+                    // TODO: This is a nightmare of hacking that I totally don't understand.
+                    // I really need to clean this line up. Maybe a helper function would be
+                    // a good idea here?
+                    // Also I think that this has the wrong default. If we get the `Ok(None)` response
+                    // then we should keep the last page to whatever value it last had, rather than
+                    // set it to something like 1.
+                    // I'm increasingly wondering if Yew contexts are the right way to handle all this.
+                    last_page: link.as_deref().map(parse_last_page).transpose().unwrap().flatten().unwrap() // unwrap_or(Ok(1)).unwrap()
                 };
                 web_sys::console::log_1(&format!("The new repo state is <{repo_state:?}>.").into());
                 repository_paginator_state.set(repo_state);
