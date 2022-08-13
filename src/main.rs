@@ -81,7 +81,11 @@ fn get_value_from_input_event(e: InputEvent) -> String {
 // * Allow the user to press "Enter" instead of having to click on "Submit"
 // * Convert the state back to &str to avoid all the copying.
 //   * Maybe going to leave this alone? We got into a lot of lifetime issues that I didn't
-//     want to deal with right now.
+//     want to deal with right now., because with the current version of Yew (v19), we can't
+//     add generics to function components, and we'd need a lifetime component on the
+//     properties, which bleeds through to the function component.
+//   * Generics on function components have been added in the next version of Yew, so
+//     we can come back to this if/when I upgrade to the newer version.
 // * Deal with paging from GitHub
 
 /// Controlled Text Input Component
@@ -147,7 +151,8 @@ pub struct RepositoryPaginatorState {
     last_page: usize,
 }
 
-// Things to work on, 30 July 2022
+// Things to work on, 13 August 2022
+//  * Fix the problem with my regex for the pagination, probably by replacing the regex.
 //  * Do something sensible about error handling
 //  * Turn list of repositories into a checkbox list
 
