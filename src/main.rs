@@ -4,15 +4,14 @@
 // #![warn(clippy::expect_used)]
 
 use std::collections::HashMap;
-use once_cell::sync::Lazy;
 
 use chrono::DateTime;
 use chrono::Local;
 
-use regex::Regex;
-
 use serde::Deserialize;
 use serde_json::Value;
+
+use url::{Url, ParseError};
 
 use wasm_bindgen::JsCast;
 use wasm_bindgen::UnwrapThrowExt;
@@ -165,11 +164,19 @@ pub struct RepositoryPaginatorState {
  * <https://api.github.com/organizations/18425666/repos?page=1&per_page=5>; rel="prev", <https://api.github.com/organizations/18425666/repos?page=3&per_page=5>; rel="next", <https://api.github.com/organizations/18425666/repos?page=5&per_page=5>; rel="last", <https://api.github.com/organizations/18425666/repos?page=1&per_page=5>; rel="first"
  */
 fn parse_last_page(link_str: &str) -> usize {
-    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r#"[&?]page=(\d+).*rel="last""#).unwrap());
-
-    let captures = RE.captures(link_str).expect("Applying the regex to the link text failed");
-    web_sys::console::log_1(&format!("Our capture was <{}>.", &captures[1]).into());
-    captures[1].parse::<usize>().expect("Failed to parse last page number from link text")
+    // This will break if there can ever be a comma in a URL, but that doesn't seem
+    // likely given the structure of these GitHub URLs.
+    let last_url = link_str
+        .split(", ")
+        .find_map(|s| s.trim().strip_suffix(r#"; rel="last""#)).unwrap()
+        .trim_start_matches('<')
+        .trim_end_matches('>')
+        .parse::<Url>().unwrap();
+    let num_pages_str = last_url.query_pairs()
+        .find(|(k, _)| k.eq("page"))
+        .map(|(_, v)| v)
+        .unwrap();
+    num_pages_str.parse::<usize>().unwrap()
 }
 
 /*
