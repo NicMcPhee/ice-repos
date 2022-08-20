@@ -160,20 +160,20 @@ pub struct RepositoryPaginatorState {
 
 #[derive(Debug)]
 enum LinkParseError {
-    UrlParseError(ParseError),
-    PageEntryMissingError(Url),
-    PageNumParseError(ParseIntError)
+    InvalidUrl(ParseError),
+    PageEntryMissing(Url),
+    InvalidPageNumber(ParseIntError)
 }
 
 impl From<ParseError> for LinkParseError {
     fn from(e: ParseError) -> Self {
-        Self::UrlParseError(e)
+        Self::InvalidUrl(e)
     }
 }
 
 impl From<ParseIntError> for LinkParseError {
     fn from(e: ParseIntError) -> Self {
-        Self::PageNumParseError(e)
+        Self::InvalidPageNumber(e)
     }
 }
 
@@ -206,7 +206,7 @@ fn parse_last_page(link_str: &str) -> Result<Option<usize>, LinkParseError> {
         // and we'll return a LinkParseError::PageEntryMissingError if it happens.
         .find(|(k, _)| k.eq("page"))
         .map(|(_, v)| v)
-        .ok_or_else(|| LinkParseError::PageEntryMissingError(last_url.clone()))?;
+        .ok_or_else(|| LinkParseError::PageEntryMissing(last_url.clone()))?;
     // This fails and returns a LinkParseError::PageNumberParseError if for some
     // reason the `num_pages_str` can't be parsed to a `usize`. This would also
     // presumably be an error or major API change on the part of GitHub.
