@@ -258,6 +258,10 @@ fn repository_list(props: &RepositoryListProps) -> Html {
     }
 }
 
+// This component has gotten _really_ long. At a minimum it should be moved
+// into its own file. It's also possible that it should be converted into
+// a struct component to help avoid some of the function call/return issues
+// in the error handling.
 #[function_component(RepositoryPaginator)]
 pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
     fn paginator_button_class(page_number: usize, current_page: usize) -> String {
@@ -281,6 +285,15 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
         let parse_result = parse_last_page(link_str)?
             .unwrap_or(current_page);
         Ok(parse_result)
+    }
+
+    fn handle_parse_error(err: &LinkParseError) {
+        web_sys::window()
+            .unwrap()
+            .alert_with_message("There was an error contacting the GitHub server; please try again")
+            .unwrap();
+        web_sys::console::error_1(
+            &format!("There was an error parsing the link field in the HTTP response: {:?}", err).into());
     }
 
     let RepositoryPaginatorProps { organization } = props;
@@ -308,7 +321,7 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
                     None => 1,
                     Some(link_str) => match try_extract(link_str, current_page) {
                         Ok(last_page) => last_page,
-                        Err(err) => panic!("Bad!")
+                        Err(err) => { handle_parse_error(&err); return }
                     }
                 };
                 let repos_result: Vec<Repository> = response.json().await.unwrap();
