@@ -206,11 +206,7 @@ fn parse_last_page(link_str: &str) -> Result<Option<usize>, LinkParseError> {
         // and we'll return a LinkParseError::PageEntryMissingError if it happens.
         .find(|(k, _)| k.eq("page"))
         .map(|(_, v)| v)
-        // The following line fails because of an ownership issue. I think that
-        // we're passing ownership of into the closure, but num_pages_str still
-        // points into that and we need to use that in the line after. I suspect
-        // I'll need to clone something.
-        .ok_or_else(|| LinkParseError::PageEntryMissingError(last_url))?;
+        .ok_or_else(|| LinkParseError::PageEntryMissingError(last_url.clone()))?;
     // This fails and returns a LinkParseError::PageNumberParseError if for some
     // reason the `num_pages_str` can't be parsed to a `usize`. This would also
     // presumably be an error or major API change on the part of GitHub.
