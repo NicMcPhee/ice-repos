@@ -277,6 +277,12 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
         })
     }
 
+    fn try_extract(link_str: &str, current_page: usize) -> Result<usize, LinkParseError> {
+        let parse_result = parse_last_page(link_str)?
+            .unwrap_or(current_page);
+        Ok(parse_result)
+    }
+
     let RepositoryPaginatorProps { organization } = props;
     web_sys::console::log_1(&format!("RepositoryPaginator called with organization {organization}.").into());
     let repository_paginator_state = use_state(|| RepositoryPaginatorState {
@@ -298,18 +304,19 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
                 let response = Request::get(&request_url).send().await.unwrap();
                 let link = response.headers().get("link");
                 web_sys::console::log_1(&format!("The link element of the header was <{link:?}>.").into());
+                let last_page = match link.as_deref() {
+                    None => 1,
+                    Some(link_str) => match try_extract(link_str, current_page) {
+                        Ok(last_page) => last_page,
+                        Err(err) => panic!("Bad!")
+                    }
+                };
                 let repos_result: Vec<Repository> = response.json().await.unwrap();
                 let repo_state = RepositoryPaginatorState {
                     repositories: repos_result,
                     current_page: 1,
-                    // TODO: This is a nightmare of hacking that I totally don't understand.
-                    // I really need to clean this line up. Maybe a helper function would be
-                    // a good idea here?
-                    // Also I think that this has the wrong default. If we get the `Ok(None)` response
-                    // then we should keep the last page to whatever value it last had, rather than
-                    // set it to something like 1.
                     // I'm increasingly wondering if Yew contexts are the right way to handle all this.
-                    last_page: link.as_deref().map(parse_last_page).transpose().unwrap().flatten().unwrap() // unwrap_or(Ok(1)).unwrap()
+                    last_page
                 };
                 web_sys::console::log_1(&format!("The new repo state is <{repo_state:?}>.").into());
                 repository_paginator_state.set(repo_state);
