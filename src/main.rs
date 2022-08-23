@@ -146,6 +146,9 @@ pub struct RepositoryPaginatorProps {
 
 #[derive(Debug)]
 pub struct RepositoryPaginatorState {
+    // TODO: This should probably be an Option<Vec<Repository>> to distinguish between
+    // an organization that has no repositories vs. we're waiting for repositories to
+    // be loaded.
     repositories: Vec<Repository>,
     current_page: usize,
     last_page: usize,
@@ -273,6 +276,8 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
 
     fn make_button_callback(page_number: usize, repository_paginator_state: UseStateHandle<RepositoryPaginatorState>) -> Callback<MouseEvent> {
         Callback::from(move |_| {
+            // Only make a new state if the page_number is different than the current_page number.
+            if page_number == repository_paginator_state.current_page { return }
             let repo_state = RepositoryPaginatorState {
                 repositories: vec![],
                 current_page: page_number,
@@ -345,23 +350,16 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
         <>
             if repository_paginator_state.last_page > 1 {
                 <div class="btn-group">
-                {
-                    // Not sure why we need the containing pair of curly braces, but
-                    // it's probably because we're inside an `html!` macro call. I
-                    // might be able to remove the outer `html!` and add the `RepositoryList`
-                    // component call to this iterator in some fashion.
-                    //
-                    // It's possible that `html_nested` would be a useful tool here.
-                    // https://docs.rs/yew/latest/yew/macro.html_nested.html
-                    (1..=repository_paginator_state.last_page).map(|page_number| {
+                // It's possible that `html_nested` would be a useful tool here.
+                // https://docs.rs/yew/latest/yew/macro.html_nested.html
+                {(1..=repository_paginator_state.last_page).map(|page_number| {
                         html! {
                             <button class={ paginator_button_class(page_number, repository_paginator_state.current_page) }
                                     onclick={ make_button_callback(page_number, repository_paginator_state.clone()) }>
                                 { page_number }
                             </button>
                         }
-                    }).collect::<Html>()
-                }
+                    }).collect::<Html>()}
                 </div>
             }
             // TODO: I don't like this .clone(), but passing references got us into lifetime hell.
