@@ -333,6 +333,12 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
                         Err(err) => { handle_parse_error(&err); return }
                     }
                 };
+                // TODO: This seems fairly slow when there are a lot of repositories. My guess
+                // is that parsing the huge pile of JSON we get back is at least part of the
+                // problem. Switching to GraphQL would potentially help this by allowing us to
+                // specify the exact info we need for each repository (which is a tiny subset of
+                // what GitHub currently provides), which should greatly reduce the
+                // size of the JSON package and the cost of the parsing.
                 let repos_result: Vec<Repository> = response.json().await.unwrap();
                 let repo_state = RepositoryPaginatorState {
                     repositories: repos_result,
