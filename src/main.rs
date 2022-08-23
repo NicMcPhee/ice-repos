@@ -262,7 +262,7 @@ fn repository_list(props: &RepositoryListProps) -> Html {
 }
 
 // The GitHub default is 30; they allow no more than 100.
-const REPOS_PER_PAGE: u8 = 5;
+const REPOS_PER_PAGE: u8 = 7;
 
 // This component has gotten _really_ long. At a minimum it should be moved
 // into its own file. It's also possible that it should be converted into
@@ -278,6 +278,7 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
         Callback::from(move |_| {
             // Only make a new state if the page_number is different than the current_page number.
             if page_number == repository_paginator_state.current_page { return }
+
             let repo_state = RepositoryPaginatorState {
                 repositories: vec![],
                 current_page: page_number,
@@ -335,7 +336,7 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
                 let repos_result: Vec<Repository> = response.json().await.unwrap();
                 let repo_state = RepositoryPaginatorState {
                     repositories: repos_result,
-                    current_page: 1,
+                    current_page,
                     // I'm increasingly wondering if Yew contexts are the right way to handle all this.
                     last_page
                 };
