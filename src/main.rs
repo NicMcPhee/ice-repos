@@ -258,6 +258,9 @@ fn repository_list(props: &RepositoryListProps) -> Html {
     }
 }
 
+// The GitHub default is 30; they allow no more than 100.
+const REPOS_PER_PAGE: u8 = 5;
+
 // This component has gotten _really_ long. At a minimum it should be moved
 // into its own file. It's also possible that it should be converted into
 // a struct component to help avoid some of the function call/return issues
@@ -313,7 +316,7 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
             let current_page = *current_page;
             wasm_bindgen_futures::spawn_local(async move {
                 web_sys::console::log_1(&format!("spawn_local called with organization {organization}.").into());
-                let request_url = format!("/orgs/{organization}/repos?sort=pushed&direction=asc&per_page=5&page={current_page}");
+                let request_url = format!("/orgs/{organization}/repos?sort=pushed&direction=asc&per_page={REPOS_PER_PAGE}&page={current_page}");
                 let response = Request::get(&request_url).send().await.unwrap();
                 let link = response.headers().get("link");
                 web_sys::console::log_1(&format!("The link element of the header was <{link:?}>.").into());
