@@ -154,13 +154,6 @@ pub struct RepositoryPaginatorState {
     last_page: usize,
 }
 
-// Things to work on, 20 August 2022
-//  * Fix the ownership error in `parse_last_page`
-//  * Fix the call to `parse_last_page`, probably using a `match`
-//  * Do something sensible about error handling
-//    * Possibly introduce anyhow, eyre, or error_stack
-//  * Turn list of repositories into a checkbox list
-
 #[derive(Debug)]
 enum LinkParseError {
     InvalidUrl(ParseError),
@@ -216,14 +209,35 @@ fn parse_last_page(link_str: &str) -> Result<Option<usize>, LinkParseError> {
     Ok(Some(num_pages_str.parse::<usize>()?))
 }
 
-/*
- * To make pagination work we'll need to:
- *   - Parse the total number of pages
- *   - Emit that back to the parent component
- *   - Display (with DaisyUI) the pagination controls
- *   - Send in the desired page through the props
- *   - Request the correct page
- */
+#[derive(Clone, PartialEq, Properties)]
+struct RepositoryCardProps {
+    // TODO: Having to clone the repository in `RepositoryList` is annoying and it
+    // would be cool to turn this into a reference without making a mess of the
+    // memory management.
+    repository: Repository
+}
+
+#[function_component(RepositoryCard)]
+fn repository_card(props: &RepositoryCardProps) -> Html {
+    let RepositoryCardProps { repository } = props;
+    html! {
+        <div>
+            if repository.archived {
+                <h2 class="text-2xl text-gray-300">{ &repository.name }</h2>
+            } else {
+                <h2 class="text-2xl">{ &repository.name }</h2>
+            }
+            {
+                repository.description.as_ref().map_or_else(
+                    || html! { <p class="text-blue-700">{ "There was no description for this repository "}</p> },
+                    |s| html! { <p class="text-green-700">{ s }</p> }
+                )
+            }
+            <p>{ format!("Last updated on {}", repository.updated_at.format("%Y-%m-%d")) }</p>
+            <p>{ format!("Last pushed to on {}", repository.pushed_at.format("%Y-%m-%d")) }</p>
+        </div>
+    }
+}
 
 #[derive(Clone, PartialEq, Properties)]
 struct RepositoryListProps {
@@ -241,21 +255,7 @@ fn repository_list(props: &RepositoryListProps) -> Html {
         repositories.iter()
                     .map(|repository: &Repository| {
             html! {
-                <div>
-                    if repository.archived {
-                        <h2 class="text-2xl text-gray-300">{ repository.name.clone() }</h2>
-                    } else {
-                        <h2 class="text-2xl">{ repository.name.clone() }</h2>
-                    }
-                    {
-                        repository.description.as_ref().map_or_else(
-                            || html! { <p class="text-blue-700">{ "There was no description for this repository "}</p> },
-                            |s| html! { <p class="text-green-700">{ s.clone() }</p> }
-                        )
-                    }
-                    <p>{ format!("Last updated on {}", repository.updated_at.clone().format("%Y-%m-%d")) }</p>
-                    <p>{ format!("Last pushed to on {}", repository.pushed_at.clone().format("%Y-%m-%d")) }</p>
-                </div>
+                <RepositoryCard repository={ repository.clone() } />
             }
         }).collect()
     }
