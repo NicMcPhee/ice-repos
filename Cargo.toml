@@ -15,6 +15,7 @@ yew-router = "0.16.0"
 wasm-bindgen = "0.2.81"
 wasm-bindgen-futures = "0.4"
 chrono = { version = "0.4", features = [ "serde" ] }
+url = "2.2.2"
 
 [dependencies.web-sys]
 version = "0.3.56"
