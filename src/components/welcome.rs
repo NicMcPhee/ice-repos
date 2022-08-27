@@ -1,3 +1,8 @@
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![warn(clippy::unwrap_used)]
+#![warn(clippy::expect_used)]
+
 use yew::{function_component, html};
 
 #[function_component(Welcome)]
