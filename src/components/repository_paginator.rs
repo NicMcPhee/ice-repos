@@ -87,6 +87,42 @@ fn parse_last_page(link_str: &str) -> Result<Option<usize>, LinkParseError> {
 // The GitHub default is 30; they allow no more than 100.
 const REPOS_PER_PAGE: u8 = 7;
 
+fn paginator_button_class(page_number: usize, current_page: usize) -> String {
+    if page_number == current_page { "btn btn-active".to_string() } else { "btn".to_string() }
+}
+
+fn make_button_callback(page_number: usize, repository_paginator_state: UseStateHandle<State>) -> Callback<MouseEvent> {
+    Callback::from(move |_| {
+        // Only make a new state if the page_number is different than the current_page number.
+        if page_number == repository_paginator_state.current_page { return }
+
+        let repo_state = State {
+            repositories: vec![],
+            current_page: page_number,
+            last_page: repository_paginator_state.last_page
+        };
+        web_sys::console::log_1(&format!("make_button_callback called with page number {page_number}.").into());
+        web_sys::console::log_1(&format!("New state is {repo_state:?}.").into());
+        repository_paginator_state.set(repo_state);
+    })
+}
+
+fn try_extract(link_str: &str, current_page: usize) -> Result<usize, LinkParseError> {
+    let parse_result = parse_last_page(link_str)?
+        .unwrap_or(current_page);
+    Ok(parse_result)
+}
+
+fn handle_parse_error(err: &LinkParseError) {
+    #[allow(clippy::unwrap_used)]
+    web_sys::window()
+        .unwrap()
+        .alert_with_message("There was an error contacting the GitHub server; please try again")
+        .unwrap();
+    web_sys::console::error_1(
+        &format!("There was an error parsing the link field in the HTTP response: {:?}", err).into());
+}
+
 // * Convert the state back to &str to avoid all the copying.
 //   * Maybe going to leave this alone? We got into a lot of lifetime issues that I didn't
 //     want to deal with right now., because with the current version of Yew (v19), we can't
@@ -102,42 +138,6 @@ const REPOS_PER_PAGE: u8 = 7;
 // in the error handling.
 #[function_component(RepositoryPaginator)]
 pub fn repository_paginator(props: &Props) -> Html {
-    fn paginator_button_class(page_number: usize, current_page: usize) -> String {
-        if page_number == current_page { "btn btn-active".to_string() } else { "btn".to_string() }
-    }
-
-    fn make_button_callback(page_number: usize, repository_paginator_state: UseStateHandle<State>) -> Callback<MouseEvent> {
-        Callback::from(move |_| {
-            // Only make a new state if the page_number is different than the current_page number.
-            if page_number == repository_paginator_state.current_page { return }
-
-            let repo_state = State {
-                repositories: vec![],
-                current_page: page_number,
-                last_page: repository_paginator_state.last_page
-            };
-            web_sys::console::log_1(&format!("make_button_callback called with page number {page_number}.").into());
-            web_sys::console::log_1(&format!("New state is {repo_state:?}.").into());
-            repository_paginator_state.set(repo_state);
-        })
-    }
-
-    fn try_extract(link_str: &str, current_page: usize) -> Result<usize, LinkParseError> {
-        let parse_result = parse_last_page(link_str)?
-            .unwrap_or(current_page);
-        Ok(parse_result)
-    }
-
-    fn handle_parse_error(err: &LinkParseError) {
-        #[allow(clippy::unwrap_used)]
-        web_sys::window()
-            .unwrap()
-            .alert_with_message("There was an error contacting the GitHub server; please try again")
-            .unwrap();
-        web_sys::console::error_1(
-            &format!("There was an error parsing the link field in the HTTP response: {:?}", err).into());
-    }
-
     let Props { organization } = props;
     web_sys::console::log_1(&format!("RepositoryPaginator called with organization {organization}.").into());
     let repository_paginator_state = use_state(|| State {
