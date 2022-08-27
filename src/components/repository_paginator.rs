@@ -123,6 +123,40 @@ fn handle_parse_error(err: &LinkParseError) {
         &format!("There was an error parsing the link field in the HTTP response: {:?}", err).into());
 }
 
+fn update_state_for_organization(organization: &String, current_page: usize, state: UseStateHandle<State>) {
+    web_sys::console::log_1(&format!("use_effect_with_deps called with organization {organization}.").into());
+    let organization = organization.clone();
+    wasm_bindgen_futures::spawn_local(async move {
+        web_sys::console::log_1(&format!("spawn_local called with organization {organization}.").into());
+        let request_url = format!("/orgs/{organization}/repos?sort=pushed&direction=asc&per_page={REPOS_PER_PAGE}&page={current_page}");
+        let response = Request::get(&request_url).send().await.unwrap();
+        let link = response.headers().get("link");
+        web_sys::console::log_1(&format!("The link element of the header was <{link:?}>.").into());
+        let last_page = match link.as_deref() {
+            None => 1,
+            Some(link_str) => match try_extract(link_str, current_page) {
+                Ok(last_page) => last_page,
+                Err(err) => { handle_parse_error(&err); return }
+            }
+        };
+        // TODO: This seems fairly slow when there are a lot of repositories. My guess
+        // is that parsing the huge pile of JSON we get back is at least part of the
+        // problem. Switching to GraphQL would potentially help this by allowing us to
+        // specify the exact info we need for each repository (which is a tiny subset of
+        // what GitHub currently provides), which should greatly reduce the
+        // size of the JSON package and the cost of the parsing.
+        let repos_result: Vec<Repository> = response.json().await.unwrap();
+        let repo_state = State {
+            repositories: repos_result,
+            current_page,
+            // I'm increasingly wondering if Yew contexts are the right way to handle all this.
+            last_page
+        };
+        web_sys::console::log_1(&format!("The new repo state is <{repo_state:?}>.").into());
+        state.set(repo_state);
+    });
+}
+
 // * Convert the state back to &str to avoid all the copying.
 //   * Maybe going to leave this alone? We got into a lot of lifetime issues that I didn't
 //     want to deal with right now., because with the current version of Yew (v19), we can't
@@ -149,41 +183,12 @@ pub fn repository_paginator(props: &Props) -> Html {
         let repository_paginator_state = repository_paginator_state.clone();
         let organization = organization.clone();
         let current_page = repository_paginator_state.current_page;
-        use_effect_with_deps(move |(organization, current_page)| {
-            web_sys::console::log_1(&format!("use_effect_with_deps called with organization {organization}.").into());
-            let organization = organization.clone();
-            let current_page = *current_page;
-            wasm_bindgen_futures::spawn_local(async move {
-                web_sys::console::log_1(&format!("spawn_local called with organization {organization}.").into());
-                let request_url = format!("/orgs/{organization}/repos?sort=pushed&direction=asc&per_page={REPOS_PER_PAGE}&page={current_page}");
-                let response = Request::get(&request_url).send().await.unwrap();
-                let link = response.headers().get("link");
-                web_sys::console::log_1(&format!("The link element of the header was <{link:?}>.").into());
-                let last_page = match link.as_deref() {
-                    None => 1,
-                    Some(link_str) => match try_extract(link_str, current_page) {
-                        Ok(last_page) => last_page,
-                        Err(err) => { handle_parse_error(&err); return }
-                    }
-                };
-                // TODO: This seems fairly slow when there are a lot of repositories. My guess
-                // is that parsing the huge pile of JSON we get back is at least part of the
-                // problem. Switching to GraphQL would potentially help this by allowing us to
-                // specify the exact info we need for each repository (which is a tiny subset of
-                // what GitHub currently provides), which should greatly reduce the
-                // size of the JSON package and the cost of the parsing.
-                let repos_result: Vec<Repository> = response.json().await.unwrap();
-                let repo_state = State {
-                    repositories: repos_result,
-                    current_page,
-                    // I'm increasingly wondering if Yew contexts are the right way to handle all this.
-                    last_page
-                };
-                web_sys::console::log_1(&format!("The new repo state is <{repo_state:?}>.").into());
-                repository_paginator_state.set(repo_state);
-            });
-            || ()
-        }, (organization, current_page));
+        use_effect_with_deps(
+            move |(organization, current_page)| {
+                update_state_for_organization(organization, *current_page, repository_paginator_state);
+                || ()
+            }, 
+            (organization, current_page));
     }
 
     html! {
