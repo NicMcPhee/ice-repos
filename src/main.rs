@@ -23,6 +23,10 @@ use reqwasm::http::Request;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
+use ice_repos::components::{
+    welcome::Welcome,
+};
+
 // ===================================================================================
 // for {username}.github.io/{repo_name}
 // replace 'yew-template-for-github.io' to your repo name
@@ -372,17 +376,6 @@ pub fn repository_paginator(props: &RepositoryPaginatorProps) -> Html {
             // TODO: I don't like this .clone(), but passing references got us into lifetime hell.
             <RepositoryList repositories={ repository_paginator_state.repositories.clone() } />
         </>
-    }
-}
-
-#[function_component(Welcome)]
-fn welcome() -> Html {
-    html! {
-        <div class="text-center lg:text-left">
-            <h1 class="text-5xl font-bold">{ "Welcome to" }</h1>
-            <h1 class="text-5xl font-bold">{ "ice-repos!" }</h1>
-            <p class="py-6">{ "A tool for archiving groups of GitHub repos" }</p>
-        </div>
     }
 }
 
