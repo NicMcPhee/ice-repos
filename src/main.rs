@@ -14,17 +14,15 @@ use serde_json::Value;
 
 use url::{Url, ParseError};
 
-use wasm_bindgen::JsCast;
-use wasm_bindgen::UnwrapThrowExt;
-use web_sys::HtmlInputElement;
-
 use reqwasm::http::Request;
 
 use yew::prelude::*;
 use yew_router::prelude::*;
 
 use ice_repos::components::{
-    welcome::Welcome, about::About
+    welcome::Welcome,
+    about::About,
+    organization_entry::OrganizationEntry,
 };
 
 // ===================================================================================
@@ -63,73 +61,6 @@ fn switch(routes: &Route) -> Html {
         Route::NotFound => html! { <p>{ "Not Found" }</p> },
     }
 }
-
-#[derive(Clone, PartialEq, Properties)]
-pub struct OrganizationEntryProps {
-    pub on_submit: Callback<String>,
-}
-
-fn get_value_from_input_event(e: InputEvent) -> String {
-    let event: Event = e.dyn_into().unwrap_throw();
-    let event_target = event.target().unwrap_throw();
-    let target: HtmlInputElement = event_target.dyn_into().unwrap_throw();
-    target.value()
-}
-
-// * Change the state when the text area loses focus instead of requiring a click on the
-//   submit button.
-//   * There is an `onfocusout` event that we should be able to leverage.
-//     * This will trigger when we tab out, but I'm thinking that might be OK since there's
-//       nowhere else to go in this simple interface.
-//   * There's an `onsubmit` event. Would that be potentially useful?
-// * Allow the user to press "Enter" instead of having to click on "Submit"
-// * Convert the state back to &str to avoid all the copying.
-//   * Maybe going to leave this alone? We got into a lot of lifetime issues that I didn't
-//     want to deal with right now., because with the current version of Yew (v19), we can't
-//     add generics to function components, and we'd need a lifetime component on the
-//     properties, which bleeds through to the function component.
-//   * Generics on function components have been added in the next version of Yew, so
-//     we can come back to this if/when I upgrade to the newer version.
-// * Deal with paging from GitHub
-
-/// Controlled Text Input Component
-#[function_component(OrganizationEntry)]
-pub fn organization_entry(props: &OrganizationEntryProps) -> Html {
-    let field_contents = use_state(|| String::from(""));
-
-    let OrganizationEntryProps { on_submit } = props.clone();
-
-    let oninput = {
-        let field_contents = field_contents.clone();
-        Callback::from(move |input_event: InputEvent| {
-            field_contents.set(get_value_from_input_event(input_event));
-        })
-    };
-
-    let onclick: Callback<MouseEvent> = {
-        let field_contents = field_contents.clone();
-        Callback::from(move |_| {
-            on_submit.emit((*field_contents).clone());
-        })
-    };
-
-    html! {
-        <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100">
-            <div class="card-body">
-                <div class="form-control">
-                <label class="label">
-                    <span class="label-text">{ "What organization would you like to archive repositories for?" }</span>
-                </label>
-                <input type="text" placeholder="organization" class="input input-bordered" {oninput} value={ (*field_contents).clone() }/>
-                </div>
-                <div class="form-control mt-6">
-                <button type="submit" class="btn btn-primary" {onclick}>{ "Submit" }</button>
-                </div>
-            </div>
-        </div>
-    }
-}
-
 #[derive(Clone, PartialEq, Deserialize, Debug)]
 struct Repository {
     id: usize,
@@ -267,6 +198,15 @@ fn repository_list(props: &RepositoryListProps) -> Html {
 
 // The GitHub default is 30; they allow no more than 100.
 const REPOS_PER_PAGE: u8 = 7;
+
+// * Convert the state back to &str to avoid all the copying.
+//   * Maybe going to leave this alone? We got into a lot of lifetime issues that I didn't
+//     want to deal with right now., because with the current version of Yew (v19), we can't
+//     add generics to function components, and we'd need a lifetime component on the
+//     properties, which bleeds through to the function component.
+//   * Generics on function components have been added in the next version of Yew, so
+//     we can come back to this if/when I upgrade to the newer version.
+
 
 // This component has gotten _really_ long. At a minimum it should be moved
 // into its own file. It's also possible that it should be converted into
