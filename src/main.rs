@@ -24,7 +24,7 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 use ice_repos::components::{
-    welcome::Welcome,
+    welcome::Welcome, about::About
 };
 
 // ===================================================================================
@@ -411,15 +411,6 @@ fn home_page() -> Html {
             <div>
                 <About/>
             </div>
-        </div>
-    }
-}
-
-#[function_component(About)]
-fn about() -> Html {
-    html! {
-        <div class="mt-4">
-            <p>{ "Explain the basic idea of the app here" }</p>
         </div>
     }
 }
