@@ -17,7 +17,7 @@ use ice_repos::components::{
     welcome::Welcome,
     about::About,
     organization_entry::OrganizationEntry,
-    repository_card::RepositoryCard,
+    repository_list::RepositoryList,
 };
 
 // ===================================================================================
@@ -125,28 +125,6 @@ fn parse_last_page(link_str: &str) -> Result<Option<usize>, LinkParseError> {
     // reason the `num_pages_str` can't be parsed to a `usize`. This would also
     // presumably be an error or major API change on the part of GitHub.
     Ok(Some(num_pages_str.parse::<usize>()?))
-}
-
-#[derive(Clone, PartialEq, Properties)]
-struct RepositoryListProps {
-    repositories: Vec<Repository>
-}
-
-#[function_component(RepositoryList)]
-fn repository_list(props: &RepositoryListProps) -> Html {
-    let RepositoryListProps { repositories } = props;
-    if repositories.is_empty() {
-        html! {
-            <p>{ "Loading…" }</p>
-        }
-    } else {
-        repositories.iter()
-                    .map(|repository: &Repository| {
-            html! {
-                <RepositoryCard repository={ repository.clone() } />
-            }
-        }).collect()
-    }
 }
 
 // The GitHub default is 30; they allow no more than 100.
