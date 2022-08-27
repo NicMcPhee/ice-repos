@@ -3,14 +3,7 @@
 // #![warn(clippy::unwrap_used)]
 // #![warn(clippy::expect_used)]
 
-use std::collections::HashMap;
 use std::num::ParseIntError;
-
-use chrono::DateTime;
-use chrono::Local;
-
-use serde::Deserialize;
-use serde_json::Value;
 
 use url::{Url, ParseError};
 
@@ -19,10 +12,12 @@ use reqwasm::http::Request;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
+use ice_repos::repository::Repository;
 use ice_repos::components::{
     welcome::Welcome,
     about::About,
     organization_entry::OrganizationEntry,
+    repository_card::RepositoryCard,
 };
 
 // ===================================================================================
@@ -60,18 +55,6 @@ fn switch(routes: &Route) -> Html {
         Route::About => html! { <About/> },
         Route::NotFound => html! { <p>{ "Not Found" }</p> },
     }
-}
-#[derive(Clone, PartialEq, Deserialize, Debug)]
-struct Repository {
-    id: usize,
-    name: String,
-    description: Option<String>,
-    archived: bool,
-    updated_at: DateTime<Local>,
-    pushed_at: DateTime<Local>,
-
-    #[serde(flatten)]
-    extras: HashMap<String, Value>,
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -142,36 +125,6 @@ fn parse_last_page(link_str: &str) -> Result<Option<usize>, LinkParseError> {
     // reason the `num_pages_str` can't be parsed to a `usize`. This would also
     // presumably be an error or major API change on the part of GitHub.
     Ok(Some(num_pages_str.parse::<usize>()?))
-}
-
-#[derive(Clone, PartialEq, Properties)]
-struct RepositoryCardProps {
-    // TODO: Having to clone the repository in `RepositoryList` is annoying and it
-    // would be cool to turn this into a reference without making a mess of the
-    // memory management.
-    repository: Repository
-}
-
-#[function_component(RepositoryCard)]
-fn repository_card(props: &RepositoryCardProps) -> Html {
-    let RepositoryCardProps { repository } = props;
-    html! {
-        <div>
-            if repository.archived {
-                <h2 class="text-2xl text-gray-300">{ &repository.name }</h2>
-            } else {
-                <h2 class="text-2xl">{ &repository.name }</h2>
-            }
-            {
-                repository.description.as_ref().map_or_else(
-                    || html! { <p class="text-blue-700">{ "There was no description for this repository "}</p> },
-                    |s| html! { <p class="text-green-700">{ s }</p> }
-                )
-            }
-            <p>{ format!("Last updated on {}", repository.updated_at.format("%Y-%m-%d")) }</p>
-            <p>{ format!("Last pushed to on {}", repository.pushed_at.format("%Y-%m-%d")) }</p>
-        </div>
-    }
 }
 
 #[derive(Clone, PartialEq, Properties)]
