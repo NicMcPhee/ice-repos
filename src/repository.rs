@@ -9,7 +9,7 @@ use serde::Deserialize;
 
 #[derive(Clone, PartialEq, Deserialize, Debug)]
 pub struct Repository {
-    id: usize,
+    pub id: usize,
     pub name: String,
     pub description: Option<String>,
     pub archived: bool,
@@ -18,4 +18,9 @@ pub struct Repository {
 
     // #[serde(flatten)]
     // extras: HashMap<String, Value>,
+}
+
+pub struct DesiredArchiveState {
+    pub id: usize,
+    pub desired_archive_state: bool
 }
