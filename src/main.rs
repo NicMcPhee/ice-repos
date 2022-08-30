@@ -63,7 +63,7 @@ fn home_page() -> Html {
     };
 
     html! {
-        <div class="grid grid-cols-1 divide-y flex flex-col space-y-8">
+        <div class="grid grid-cols-1 divide-y flex flex-col space-y-8 m-16">
             <div class="hero min-h-fit bg-base-200">
                 <div class="hero-content flex-col lg:flex-row">
                     <Welcome />
