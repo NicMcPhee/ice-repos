@@ -3,21 +3,41 @@
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::expect_used)]
 
+use wasm_bindgen::{UnwrapThrowExt, JsCast};
+use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use crate::repository::Repository;
+use crate::repository::{Repository, DesiredArchiveState};
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
     // TODO: Having to clone the repository in `RepositoryList` is annoying and it
     // would be cool to turn this into a reference without making a mess of the
     // memory management.
-    pub repository: Repository
+    pub repository: Repository,
+    pub on_checkbox_change: Callback<DesiredArchiveState>
 }
 
 #[function_component(RepositoryCard)]
 pub fn repository_card(props: &Props) -> Html {
-    let Props { repository } = props;
+    let Props { repository, on_checkbox_change } = props;
+
+    let onclick: Callback<MouseEvent> = {
+        let id = repository.id;
+        let on_checkbox_change = on_checkbox_change.clone();
+
+        Callback::from(move |mouse_event: MouseEvent| {
+            let event_target = mouse_event.target().unwrap_throw();
+            let target: HtmlInputElement = event_target.dyn_into().unwrap_throw();
+            let desired_archive_state = target.checked();
+
+            on_checkbox_change.emit(DesiredArchiveState {
+                id,
+                desired_archive_state
+            });
+        })
+    };
+
     html! {
         <div class="card card-compact">
             <div class="card-body">
@@ -27,7 +47,7 @@ pub fn repository_card(props: &Props) -> Html {
                     <div class="card-actions">
                         <div class="form-control">
                             <label class="label cursor-pointer">
-                                <input type="checkbox" checked=true class="checkbox" />
+                                <input type="checkbox" checked=true class="checkbox" {onclick} />
                                 <p class="label-text italic ml-2">{ "Archive this repository" }</p> 
                             </label>
                         </div>
