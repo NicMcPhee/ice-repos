@@ -11,7 +11,7 @@ use reqwasm::http::Request;
 
 use yew::prelude::*;
 
-use crate::repository::Repository;
+use crate::repository::{Repository, DesiredArchiveState};
 use crate::components::repository_list::RepositoryList;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -191,6 +191,14 @@ pub fn repository_paginator(props: &Props) -> Html {
             (organization, current_page));
     }
 
+    let on_checkbox_change: Callback<DesiredArchiveState> = {
+        Callback::from(move |desired_archive_state| { 
+            // organization.set(string);
+            let DesiredArchiveState { id, desired_archive_state } = desired_archive_state;
+            web_sys::console::log_1(&format!("We clicked <{id}> with value {desired_archive_state}").into());
+        })
+    };
+
     html! {
         <>
             if repository_paginator_state.last_page > 1 {
@@ -208,7 +216,8 @@ pub fn repository_paginator(props: &Props) -> Html {
                 </div>
             }
             // TODO: I don't like this .clone(), but passing references got us into lifetime hell.
-            <RepositoryList repositories={ repository_paginator_state.repositories.clone() } />
+            <RepositoryList repositories={ repository_paginator_state.repositories.clone() }
+                            {on_checkbox_change} />
         </>
     }
 }
