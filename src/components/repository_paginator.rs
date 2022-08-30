@@ -3,6 +3,8 @@
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::expect_used)]
 
+use std::collections::HashMap;
+use std::hash::Hash;
 use std::num::ParseIntError;
 
 use url::{Url, ParseError};
@@ -19,12 +21,40 @@ pub struct Props {
     pub organization: String,
 }
 
+// TODO: We need to figure out the type and mutability of `ArchivedStateMap` inside `State`,
+// and the hash map inside `ArchivedStateMap`.
+// TODO: add_repos needs to only add repositories that aren't already archived.
+// TODO: We'll need some way of getting from an ID to a repo that doesn't involve
+// going back to GitHub. Probably want the HashMap to map to (Repository, bool),
+// or (kinda equivalently) DesiredArchiveState.
+
+#[derive(Debug)]
+struct ArchiveStateMap {
+    pub map: HashMap<usize, bool>
+}
+
+impl ArchiveStateMap {
+    fn new() -> ArchiveStateMap {
+        ArchiveStateMap {
+            map: HashMap::new()
+        }
+    }
+
+    fn add_repos(&mut self, repositories: &[Repository]) -> &mut Self {
+        for repo in repositories {
+            self.map.entry(repo.id).or_insert(true);
+        }
+        self
+    }
+}
+
 #[derive(Debug)]
 struct State {
     // TODO: This should probably be an Option<Vec<Repository>> to distinguish between
     // an organization that has no repositories vs. we're waiting for repositories to
     // be loaded.
     repositories: Vec<Repository>,
+    state_map: ArchiveStateMap,
     current_page: usize,
     last_page: usize,
 }
@@ -98,6 +128,7 @@ fn make_button_callback(page_number: usize, repository_paginator_state: UseState
 
         let repo_state = State {
             repositories: vec![],
+            state_map: ArchiveStateMap::new(),
             current_page: page_number,
             last_page: repository_paginator_state.last_page
         };
@@ -148,6 +179,7 @@ fn update_state_for_organization(organization: &String, current_page: usize, sta
         let repos_result: Vec<Repository> = response.json().await.unwrap();
         let repo_state = State {
             repositories: repos_result,
+            state_map: state.state_map.add_repos(&repos_result),
             current_page,
             // I'm increasingly wondering if Yew contexts are the right way to handle all this.
             last_page
