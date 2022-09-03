@@ -5,10 +5,11 @@
 
 use std::collections::HashMap;
 use std::num::ParseIntError;
+use std::ops::Deref;
 
 use url::{Url, ParseError};
 
-use reqwasm::http::Request;
+use reqwasm::http::{Request};
 
 use yew::prelude::*;
 
@@ -53,7 +54,16 @@ impl ArchiveStateMap {
         }
         self
     }
+
+    // fn set_repo_state(mut self, id: usize, archived_state: bool) {
+    //     self.map.insert(id, v)
+    // }
 }
+
+// TODO: Idea from @esitsu@Twitch is to wrap the State with either
+//   a Mutex or a RwLock so that we can directly modify the elements
+//   of the State. This means we don't have to call `.set()` to update
+//   the component state, and we might avoid some cloning as a result.
 
 #[derive(Debug)]
 struct State {
@@ -61,7 +71,6 @@ struct State {
     // an organization that has no repositories vs. we're waiting for repositories to
     // be loaded.
     repositories: Vec<Repository>,
-    state_map: ArchiveStateMap,
     current_page: usize,
     last_page: usize,
 }
@@ -135,7 +144,6 @@ fn make_button_callback(page_number: usize, repository_paginator_state: UseState
 
         let repo_state = State {
             repositories: vec![],
-            state_map: repository_paginator_state.state_map.clone(),
             current_page: page_number,
             last_page: repository_paginator_state.last_page
         };
@@ -161,7 +169,7 @@ fn handle_parse_error(err: &LinkParseError) {
         &format!("There was an error parsing the link field in the HTTP response: {:?}", err).into());
 }
 
-fn update_state_for_organization(organization: &String, current_page: usize, state: UseStateHandle<State>) {
+fn update_state_for_organization(organization: &String, current_page: usize, state: UseStateHandle<State>, archive_state_map: UseStateHandle<ArchiveStateMap>) {
     web_sys::console::log_1(&format!("use_effect_with_deps called with organization {organization}.").into());
     let organization = organization.clone();
     wasm_bindgen_futures::spawn_local(async move {
@@ -184,13 +192,9 @@ fn update_state_for_organization(organization: &String, current_page: usize, sta
         // what GitHub currently provides), which should greatly reduce the
         // size of the JSON package and the cost of the parsing.
         let repos_result: Vec<Repository> = response.json().await.unwrap();
-        let state_map = state
-                                            .state_map
-                                            .clone()
-                                            .with_repos(&repos_result);
+        archive_state_map.set(archive_state_map.deref().clone().with_repos(&repos_result));
         let repo_state = State {
             repositories: repos_result,
-            state_map,
             current_page,
             // I'm increasingly wondering if Yew contexts are the right way to handle all this.
             last_page
@@ -219,27 +223,30 @@ pub fn repository_paginator(props: &Props) -> Html {
     web_sys::console::log_1(&format!("RepositoryPaginator called with organization {organization}.").into());
     let repository_paginator_state = use_state(|| State {
         repositories: vec![],
-        state_map: ArchiveStateMap::new(),
         current_page: 1,
         last_page: 0 // This is "wrong" and needs to be set after we've gotten our response.
     });
+    let archive_state_map = use_state(ArchiveStateMap::new);
+    web_sys::console::log_1(&format!("There are {} entries in archive state map.", archive_state_map.map.len()).into());
     {
         let repository_paginator_state = repository_paginator_state.clone();
+        let archive_state_map = archive_state_map.clone();
         let organization = organization.clone();
         let current_page = repository_paginator_state.current_page;
         use_effect_with_deps(
             move |(organization, current_page)| {
-                update_state_for_organization(organization, *current_page, repository_paginator_state);
+                update_state_for_organization(organization, *current_page, repository_paginator_state, archive_state_map);
                 || ()
             }, 
             (organization, current_page));
     }
 
     let on_checkbox_change: Callback<DesiredArchiveState> = {
-        Callback::from(move |desired_archive_state| { 
-            // organization.set(string);
+        let archive_state_map = archive_state_map.clone();
+        Callback::from(move |desired_archive_state| {
             let DesiredArchiveState { id, desired_archive_state } = desired_archive_state;
             web_sys::console::log_1(&format!("We clicked <{id}> with value {desired_archive_state}").into());
+            web_sys::console::log_1(&format!("State map has {} entries.", archive_state_map.map.len()).into());
         })
     };
 
