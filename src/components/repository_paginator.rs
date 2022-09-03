@@ -4,7 +4,6 @@
 #![warn(clippy::expect_used)]
 
 use std::collections::HashMap;
-use std::hash::Hash;
 use std::num::ParseIntError;
 
 use url::{Url, ParseError};
@@ -22,27 +21,35 @@ pub struct Props {
 }
 
 // TODO: We need to figure out the type and mutability of `ArchivedStateMap` inside `State`,
-// and the hash map inside `ArchivedStateMap`.
+//   and the hash map inside `ArchivedStateMap`.
 // TODO: add_repos needs to only add repositories that aren't already archived.
 // TODO: We'll need some way of getting from an ID to a repo that doesn't involve
-// going back to GitHub. Probably want the HashMap to map to (Repository, bool),
-// or (kinda equivalently) DesiredArchiveState.
+//   going back to GitHub. Probably want the HashMap to map to (Repository, bool),
+//   or (kinda equivalently) DesiredArchiveState.
+// TODO: Maybe replace Repository with Rc<Repository> in places like ArchiveStateMap
+//   so I don't have to clone them all the time.
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct ArchiveStateMap {
-    pub map: HashMap<usize, bool>
+    // Map from the repository ID as a key, to a pair
+    // containing the Repository struct and a boolean
+    // indicating whether we want to archive that repository
+    // or not.
+    pub map: HashMap<usize, (Repository, bool)>
 }
 
 impl ArchiveStateMap {
-    fn new() -> ArchiveStateMap {
-        ArchiveStateMap {
+    fn new() -> Self {
+        Self {
             map: HashMap::new()
         }
     }
 
-    fn add_repos(&mut self, repositories: &[Repository]) -> &mut Self {
+    fn with_repos(mut self, repositories: &[Repository]) -> Self {
         for repo in repositories {
-            self.map.entry(repo.id).or_insert(true);
+            if !repo.archived {
+                self.map.entry(repo.id).or_insert((repo.clone(), true));
+            }
         }
         self
     }
@@ -128,7 +135,7 @@ fn make_button_callback(page_number: usize, repository_paginator_state: UseState
 
         let repo_state = State {
             repositories: vec![],
-            state_map: ArchiveStateMap::new(),
+            state_map: repository_paginator_state.state_map.clone(),
             current_page: page_number,
             last_page: repository_paginator_state.last_page
         };
@@ -177,9 +184,13 @@ fn update_state_for_organization(organization: &String, current_page: usize, sta
         // what GitHub currently provides), which should greatly reduce the
         // size of the JSON package and the cost of the parsing.
         let repos_result: Vec<Repository> = response.json().await.unwrap();
+        let state_map = state
+                                            .state_map
+                                            .clone()
+                                            .with_repos(&repos_result);
         let repo_state = State {
             repositories: repos_result,
-            state_map: state.state_map.add_repos(&repos_result),
+            state_map,
             current_page,
             // I'm increasingly wondering if Yew contexts are the right way to handle all this.
             last_page
@@ -208,6 +219,7 @@ pub fn repository_paginator(props: &Props) -> Html {
     web_sys::console::log_1(&format!("RepositoryPaginator called with organization {organization}.").into());
     let repository_paginator_state = use_state(|| State {
         repositories: vec![],
+        state_map: ArchiveStateMap::new(),
         current_page: 1,
         last_page: 0 // This is "wrong" and needs to be set after we've gotten our response.
     });
