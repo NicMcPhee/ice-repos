@@ -55,9 +55,21 @@ impl ArchiveStateMap {
         self
     }
 
-    // fn set_repo_state(mut self, id: usize, archived_state: bool) {
-    //     self.map.insert(id, v)
-    // }
+    #[must_use]
+    pub fn get_desired_state(&self, id: usize) -> Option<bool> {
+        // TODO: Do something better with the error handling here.
+        self.map
+            .get(&id)
+            .map(|p| p.1)
+    }
+
+    fn update_desired_state(&self, id: usize, desired_archive_state: bool) -> Self {
+        web_sys::console::log_1(&format!("Updating {id} to {desired_archive_state}").into());
+        let mut map = self.map.clone();
+        map.entry(id).and_modify(|p| { p.1 = desired_archive_state });
+        web_sys::console::log_1(&format!("The resulting map was {map:?}").into());
+        Self { map }
+    }
 }
 
 // TODO: Idea from @esitsu@Twitch is to wrap the State with either
