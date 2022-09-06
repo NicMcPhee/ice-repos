@@ -30,8 +30,8 @@ pub struct Props {
 // TODO: Maybe replace Repository with Rc<Repository> in places like ArchiveStateMap
 //   so I don't have to clone them all the time.
 
-#[derive(Debug, Clone)]
-struct ArchiveStateMap {
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArchiveStateMap {
     // Map from the repository ID as a key, to a pair
     // containing the Repository struct and a boolean
     // indicating whether we want to archive that repository
@@ -258,7 +258,12 @@ pub fn repository_paginator(props: &Props) -> Html {
         Callback::from(move |desired_archive_state| {
             let DesiredArchiveState { id, desired_archive_state } = desired_archive_state;
             web_sys::console::log_1(&format!("We clicked <{id}> with value {desired_archive_state}").into());
-            web_sys::console::log_1(&format!("State map has {} entries.", archive_state_map.map.len()).into());
+            let new_map = archive_state_map.update_desired_state(id, desired_archive_state);
+            web_sys::console::log_1(&format!("New map before set() is {new_map:?}").into());
+            // This set doesn't seem to work; the problem may be that we're passing UseStateHandle in the
+            // props, so we should try undoing that and see if that fixes things.
+            archive_state_map.set(new_map);
+            web_sys::console::log_1(&format!("The updated archive_state_map is {archive_state_map:?}.").into());
         })
     };
 
@@ -280,6 +285,7 @@ pub fn repository_paginator(props: &Props) -> Html {
             }
             // TODO: I don't like this .clone(), but passing references got us into lifetime hell.
             <RepositoryList repositories={ repository_paginator_state.repositories.clone() }
+                            archive_state_map = {archive_state_map}
                             {on_checkbox_change} />
         </>
     }
