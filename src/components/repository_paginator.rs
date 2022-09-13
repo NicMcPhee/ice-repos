@@ -29,6 +29,7 @@ pub struct Props {
 //   or (kinda equivalently) DesiredArchiveState.
 // TODO: Maybe replace Repository with Rc<Repository> in places like ArchiveStateMap
 //   so I don't have to clone them all the time.
+// TODO: As an alternative to avoiding the cloning we could use a Context or an Agent.
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArchiveStateMap {
@@ -143,7 +144,7 @@ fn parse_last_page(link_str: &str) -> Result<Option<usize>, LinkParseError> {
 }
 
 // The GitHub default is 30; they allow no more than 100.
-const REPOS_PER_PAGE: u8 = 7;
+const REPOS_PER_PAGE: u8 = 2;
 
 fn paginator_button_class(page_number: usize, current_page: usize) -> String {
     if page_number == current_page { "btn btn-active".to_string() } else { "btn".to_string() }
@@ -254,16 +255,19 @@ pub fn repository_paginator(props: &Props) -> Html {
     }
 
     let on_checkbox_change: Callback<DesiredArchiveState> = {
+        web_sys::console::log_1(&format!("At the start of defining on_checkbox_change").into());
         let archive_state_map = archive_state_map.clone();
         Callback::from(move |desired_archive_state| {
             let DesiredArchiveState { id, desired_archive_state } = desired_archive_state;
             web_sys::console::log_1(&format!("We clicked <{id}> with value {desired_archive_state}").into());
             let new_map = archive_state_map.update_desired_state(id, desired_archive_state);
             web_sys::console::log_1(&format!("New map before set() is {new_map:?}").into());
+            web_sys::console::log_1(&format!("Old archive_state_map before set() is {archive_state_map:?}").into());
             // This set doesn't seem to work; the problem may be that we're passing UseStateHandle in the
             // props, so we should try undoing that and see if that fixes things.
             archive_state_map.set(new_map);
             web_sys::console::log_1(&format!("The updated archive_state_map is {archive_state_map:?}.").into());
+            web_sys::console::log_1(&format!("Setting of {id} is {}.", archive_state_map.map.get(&id).unwrap().1).into());
         })
     };
 
