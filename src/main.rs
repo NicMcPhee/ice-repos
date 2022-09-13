@@ -6,12 +6,14 @@
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use ice_repos::components::{
+use yewdux::prelude::*;
+
+use ice_repos::{components::{
     welcome::Welcome,
     about::About,
     organization_entry::OrganizationEntry,
     repository_paginator::RepositoryPaginator,
-};
+}, repository::AppState};
 
 // ===================================================================================
 // for {username}.github.io/{repo_name}
@@ -27,6 +29,8 @@ enum RootRoute {
 
 #[derive(Clone, Routable, PartialEq)]
 enum Route {
+    // #[at("/ice-repos/submit")]
+    // Submit,
     #[at("/ice-repos/about")]
     About,
     #[not_found]
@@ -45,6 +49,7 @@ fn root_route(routes: &RootRoute) -> Html {
 
 fn switch(routes: &Route) -> Html {
     match routes {
+        // Route::Submit => html! { <Submit/> },
         Route::About => html! { <About/> },
         Route::NotFound => html! { <p>{ "Not Found" }</p> },
     }
@@ -52,30 +57,33 @@ fn switch(routes: &Route) -> Html {
 
 #[function_component(HomePage)]
 fn home_page() -> Html {
-    let organization = use_state(|| String::from(""));
+    // let organization = use_state(|| String::from(""));
 
-    let on_submit: Callback<String> = {
-        let organization = organization.clone();
-        Callback::from(move |string| { 
-            organization.set(string);
-            // web_sys::console::log_1(&format!("We got <{string}> from the text input!").into()) 
-        })
-    };
+    let (state, _) = use_store::<AppState>();
+    let organization = state.organization;
+
+    // let on_submit: Callback<String> = {
+    //     let organization = organization.clone();
+    //     Callback::from(move |string| { 
+    //         organization.set(Some(string));
+    //         // web_sys::console::log_1(&format!("We got <{string}> from the text input!").into()) 
+    //     })
+    // };
 
     html! {
         <div class="grid grid-cols-1 divide-y flex flex-col space-y-8 m-16">
             <div class="hero min-h-fit bg-base-200">
                 <div class="hero-content flex-col lg:flex-row">
                     <Welcome />
-                    <OrganizationEntry {on_submit} />
+                    <OrganizationEntry/>
                 </div>
             </div>
 
             // Where the list of repositories go
-            if !organization.is_empty() {
+            if let Some(organization) = organization {
                 <div>
-                    <h2 class="text-2xl">{ format!("The list of repositories for the organization {}", (*organization).clone()) }</h2>
-                    <RepositoryPaginator key={(*organization).clone()} organization={(*organization).clone()} />
+                    <h2 class="text-2xl">{ format!("The list of repositories for the organization {}", organization) }</h2>
+                    <RepositoryPaginator/>
                 </div>
             }
 

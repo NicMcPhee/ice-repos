@@ -3,15 +3,20 @@
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::expect_used)]
 
+use std::ops::Deref;
+
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
+use yewdux::prelude::*;
 
-#[derive(Clone, PartialEq, Properties)]
-pub struct Props {
-    pub on_submit: Callback<String>,
-}
+use crate::repository::AppState;
+
+// #[derive(Clone, PartialEq, Properties)]
+// pub struct Props {
+//     pub on_submit: Callback<String>,
+// }
 
 // * Change the state when the text area loses focus instead of requiring a click on the
 //   submit button.
@@ -23,10 +28,10 @@ pub struct Props {
 
 /// Controlled Text Input Component
 #[function_component(OrganizationEntry)]
-pub fn organization_entry(props: &Props) -> Html {
+pub fn organization_entry() -> Html {
     let field_contents = use_state(|| String::from(""));
 
-    let Props { on_submit } = props.clone();
+    // let Props { on_submit } = props.clone();
 
     let oninput = {
         let field_contents = field_contents.clone();
@@ -38,7 +43,12 @@ pub fn organization_entry(props: &Props) -> Html {
     let onclick: Callback<MouseEvent> = {
         let field_contents = field_contents.clone();
         Callback::from(move |_| {
-            on_submit.emit((*field_contents).clone());
+            if !field_contents.is_empty() {
+                let (_, dispatch) = use_store::<AppState>();
+                dispatch.reduce_mut(|state| {
+                    state.organization = Some(field_contents.deref().clone());
+                });
+            }
         })
     };
 

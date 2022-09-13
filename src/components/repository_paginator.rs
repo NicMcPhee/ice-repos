@@ -16,7 +16,7 @@ use yew::prelude::*;
 use crate::repository::{Repository, DesiredArchiveState};
 use crate::components::repository_list::RepositoryList;
 
-#[derive(Clone, PartialEq, Properties)]
+#[derive(Clone, Eq, PartialEq, Properties)]
 pub struct Props {
     pub organization: String,
 }
@@ -31,7 +31,7 @@ pub struct Props {
 //   so I don't have to clone them all the time.
 // TODO: As an alternative to avoiding the cloning we could use a Context or an Agent.
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ArchiveStateMap {
     // Map from the repository ID as a key, to a pair
     // containing the Repository struct and a boolean
@@ -144,7 +144,7 @@ fn parse_last_page(link_str: &str) -> Result<Option<usize>, LinkParseError> {
 }
 
 // The GitHub default is 30; they allow no more than 100.
-const REPOS_PER_PAGE: u8 = 2;
+const REPOS_PER_PAGE: u8 = 3;
 
 fn paginator_button_class(page_number: usize, current_page: usize) -> String {
     if page_number == current_page { "btn btn-active".to_string() } else { "btn".to_string() }
@@ -241,6 +241,7 @@ pub fn repository_paginator(props: &Props) -> Html {
     });
     let archive_state_map = use_state(ArchiveStateMap::new);
     web_sys::console::log_1(&format!("There are {} entries in archive state map.", archive_state_map.map.len()).into());
+    web_sys::console::log_1(&format!("The current archive_state_map is {archive_state_map:?}.").into());
     {
         let repository_paginator_state = repository_paginator_state.clone();
         let archive_state_map = archive_state_map.clone();
@@ -255,7 +256,7 @@ pub fn repository_paginator(props: &Props) -> Html {
     }
 
     let on_checkbox_change: Callback<DesiredArchiveState> = {
-        web_sys::console::log_1(&format!("At the start of defining on_checkbox_change").into());
+        web_sys::console::log_1(&"At the start of defining on_checkbox_change".into());
         let archive_state_map = archive_state_map.clone();
         Callback::from(move |desired_archive_state| {
             let DesiredArchiveState { id, desired_archive_state } = desired_archive_state;
@@ -289,7 +290,7 @@ pub fn repository_paginator(props: &Props) -> Html {
             }
             // TODO: I don't like this .clone(), but passing references got us into lifetime hell.
             <RepositoryList repositories={ repository_paginator_state.repositories.clone() }
-                            archive_state_map = {archive_state_map}
+                            archive_state_map = { archive_state_map }
                             {on_checkbox_change} />
         </>
     }
