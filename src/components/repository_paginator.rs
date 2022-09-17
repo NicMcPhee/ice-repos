@@ -58,7 +58,6 @@ impl ArchiveStateMap {
 
     #[must_use]
     pub fn get_desired_state(&self, id: usize) -> Option<bool> {
-        // TODO: Do something better with the error handling here.
         self.map
             .get(&id)
             .map(|p| p.1)
