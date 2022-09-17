@@ -130,6 +130,7 @@ fn update_state_for_organization(organization: Rc<Organization>, archive_state_d
         assert!(organization.name.is_some());
         // This unwrap() should be safe because the `RepositoryPaginator` is only rendered in
         // `HomePage` if the organization is a `Some` variant.
+        #[allow(clippy::unwrap_used)]
         let organization = organization.name.as_ref().unwrap();
 
         web_sys::console::log_1(&format!("spawn_local called with organization {organization}.").into());
@@ -181,7 +182,7 @@ fn update_state_for_organization(organization: Rc<Organization>, archive_state_d
 #[function_component(RepositoryPaginator)]
 pub fn repository_paginator() -> Html {
     let (organization, _) = use_store::<Organization>();
-    let (map, archive_state_dispatch) = use_store::<ArchiveStateMap>();
+    let (_, archive_state_dispatch) = use_store::<ArchiveStateMap>();
 
     web_sys::console::log_1(&format!("RepositoryPaginator called with organization {:?}.", organization.name).into());
 
@@ -206,17 +207,12 @@ pub fn repository_paginator() -> Html {
     let on_checkbox_change: Callback<DesiredArchiveState> = {
         Callback::from(move |desired_archive_state| {
             let DesiredArchiveState { id, desired_archive_state } = desired_archive_state;
-            web_sys::console::log_1(&format!("We clicked <{id}> with value {desired_archive_state}").into());
-            web_sys::console::log_1(&format!("Archive state map before update is {map:?}").into());
             archive_state_dispatch.reduce_mut(|archive_state_map| {
                 archive_state_map.update_desired_state(id, desired_archive_state);
             });
-            web_sys::console::log_1(&format!("Archive state map after update is {map:?}").into());
-            web_sys::console::log_1(&format!("Setting of {id} is {}.", map.map.get(&id).unwrap().1).into());
         })
     };
     
-
     html! {
         <>
             if repository_paginator_state.last_page > 1 {

@@ -44,12 +44,6 @@ pub struct ArchiveStateMap {
 }
 
 impl ArchiveStateMap {
-    fn new() -> Self {
-        Self {
-            map: HashMap::new()
-        }
-    }
-
     pub fn with_repos(&mut self, repositories: &[Repository]) -> &mut Self {
         for repo in repositories {
             if !repo.archived {
