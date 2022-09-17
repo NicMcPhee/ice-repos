@@ -3,74 +3,18 @@
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::expect_used)]
 
-use std::collections::HashMap;
 use std::num::ParseIntError;
-use std::ops::Deref;
+use std::rc::Rc;
 
 use url::{Url, ParseError};
 
 use reqwasm::http::{Request};
 
 use yew::prelude::*;
+use yewdux::prelude::{use_store, Dispatch};
 
-use crate::repository::{Repository, DesiredArchiveState};
+use crate::repository::{Repository, DesiredArchiveState, Organization, ArchiveStateMap};
 use crate::components::repository_list::RepositoryList;
-
-#[derive(Clone, Eq, PartialEq, Properties)]
-pub struct Props {
-    pub organization: String,
-}
-
-// TODO: We need to figure out the type and mutability of `ArchivedStateMap` inside `State`,
-//   and the hash map inside `ArchivedStateMap`.
-// TODO: add_repos needs to only add repositories that aren't already archived.
-// TODO: We'll need some way of getting from an ID to a repo that doesn't involve
-//   going back to GitHub. Probably want the HashMap to map to (Repository, bool),
-//   or (kinda equivalently) DesiredArchiveState.
-// TODO: Maybe replace Repository with Rc<Repository> in places like ArchiveStateMap
-//   so I don't have to clone them all the time.
-// TODO: As an alternative to avoiding the cloning we could use a Context or an Agent.
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct ArchiveStateMap {
-    // Map from the repository ID as a key, to a pair
-    // containing the Repository struct and a boolean
-    // indicating whether we want to archive that repository
-    // or not.
-    pub map: HashMap<usize, (Repository, bool)>
-}
-
-impl ArchiveStateMap {
-    fn new() -> Self {
-        Self {
-            map: HashMap::new()
-        }
-    }
-
-    fn with_repos(mut self, repositories: &[Repository]) -> Self {
-        for repo in repositories {
-            if !repo.archived {
-                self.map.entry(repo.id).or_insert((repo.clone(), true));
-            }
-        }
-        self
-    }
-
-    #[must_use]
-    pub fn get_desired_state(&self, id: usize) -> Option<bool> {
-        self.map
-            .get(&id)
-            .map(|p| p.1)
-    }
-
-    fn update_desired_state(&self, id: usize, desired_archive_state: bool) -> Self {
-        web_sys::console::log_1(&format!("Updating {id} to {desired_archive_state}").into());
-        let mut map = self.map.clone();
-        map.entry(id).and_modify(|p| { p.1 = desired_archive_state });
-        web_sys::console::log_1(&format!("The resulting map was {map:?}").into());
-        Self { map }
-    }
-}
 
 // TODO: Idea from @esitsu@Twitch is to wrap the State with either
 //   a Mutex or a RwLock so that we can directly modify the elements
@@ -181,10 +125,13 @@ fn handle_parse_error(err: &LinkParseError) {
         &format!("There was an error parsing the link field in the HTTP response: {:?}", err).into());
 }
 
-fn update_state_for_organization(organization: &String, current_page: usize, state: UseStateHandle<State>, archive_state_map: UseStateHandle<ArchiveStateMap>) {
-    web_sys::console::log_1(&format!("use_effect_with_deps called with organization {organization}.").into());
-    let organization = organization.clone();
+fn update_state_for_organization(organization: Rc<Organization>, archive_state_dispatch: Dispatch<ArchiveStateMap>, current_page: usize, state: UseStateHandle<State>) {
     wasm_bindgen_futures::spawn_local(async move {
+        assert!(organization.name.is_some());
+        // This unwrap() should be safe because the `RepositoryPaginator` is only rendered in
+        // `HomePage` if the organization is a `Some` variant.
+        let organization = organization.name.as_ref().unwrap();
+
         web_sys::console::log_1(&format!("spawn_local called with organization {organization}.").into());
         let request_url = format!("/orgs/{organization}/repos?sort=pushed&direction=asc&per_page={REPOS_PER_PAGE}&page={current_page}");
         let response = Request::get(&request_url).send().await.unwrap();
@@ -204,7 +151,9 @@ fn update_state_for_organization(organization: &String, current_page: usize, sta
         // what GitHub currently provides), which should greatly reduce the
         // size of the JSON package and the cost of the parsing.
         let repos_result: Vec<Repository> = response.json().await.unwrap();
-        archive_state_map.set(archive_state_map.deref().clone().with_repos(&repos_result));
+        archive_state_dispatch.reduce_mut(|archive_state_map| {
+            archive_state_map.with_repos(&repos_result);
+        });
         let repo_state = State {
             repositories: repos_result,
             current_page,
@@ -230,46 +179,43 @@ fn update_state_for_organization(organization: &String, current_page: usize, sta
 // a struct component to help avoid some of the function call/return issues
 // in the error handling.
 #[function_component(RepositoryPaginator)]
-pub fn repository_paginator(props: &Props) -> Html {
-    let Props { organization } = props;
-    web_sys::console::log_1(&format!("RepositoryPaginator called with organization {organization}.").into());
+pub fn repository_paginator() -> Html {
+    let (organization, _) = use_store::<Organization>();
+    let (map, archive_state_dispatch) = use_store::<ArchiveStateMap>();
+
+    web_sys::console::log_1(&format!("RepositoryPaginator called with organization {:?}.", organization.name).into());
+
     let repository_paginator_state = use_state(|| State {
         repositories: vec![],
         current_page: 1,
         last_page: 0 // This is "wrong" and needs to be set after we've gotten our response.
     });
-    let archive_state_map = use_state(ArchiveStateMap::new);
-    web_sys::console::log_1(&format!("There are {} entries in archive state map.", archive_state_map.map.len()).into());
-    web_sys::console::log_1(&format!("The current archive_state_map is {archive_state_map:?}.").into());
     {
         let repository_paginator_state = repository_paginator_state.clone();
-        let archive_state_map = archive_state_map.clone();
-        let organization = organization.clone();
         let current_page = repository_paginator_state.current_page;
+        let archive_state_dispatch = archive_state_dispatch.clone();
         use_effect_with_deps(
             move |(organization, current_page)| {
-                update_state_for_organization(organization, *current_page, repository_paginator_state, archive_state_map);
+                update_state_for_organization(organization.clone(), archive_state_dispatch, *current_page, repository_paginator_state);
                 || ()
             }, 
-            (organization, current_page));
+            (organization, current_page)
+        );
     }
-
+    
     let on_checkbox_change: Callback<DesiredArchiveState> = {
-        web_sys::console::log_1(&"At the start of defining on_checkbox_change".into());
-        let archive_state_map = archive_state_map.clone();
         Callback::from(move |desired_archive_state| {
             let DesiredArchiveState { id, desired_archive_state } = desired_archive_state;
             web_sys::console::log_1(&format!("We clicked <{id}> with value {desired_archive_state}").into());
-            let new_map = archive_state_map.update_desired_state(id, desired_archive_state);
-            web_sys::console::log_1(&format!("New map before set() is {new_map:?}").into());
-            web_sys::console::log_1(&format!("Old archive_state_map before set() is {archive_state_map:?}").into());
-            // This set doesn't seem to work; the problem may be that we're passing UseStateHandle in the
-            // props, so we should try undoing that and see if that fixes things.
-            archive_state_map.set(new_map);
-            web_sys::console::log_1(&format!("The updated archive_state_map is {archive_state_map:?}.").into());
-            web_sys::console::log_1(&format!("Setting of {id} is {}.", archive_state_map.map.get(&id).unwrap().1).into());
+            web_sys::console::log_1(&format!("Archive state map before update is {map:?}").into());
+            archive_state_dispatch.reduce_mut(|archive_state_map| {
+                archive_state_map.update_desired_state(id, desired_archive_state);
+            });
+            web_sys::console::log_1(&format!("Archive state map after update is {map:?}").into());
+            web_sys::console::log_1(&format!("Setting of {id} is {}.", map.map.get(&id).unwrap().1).into());
         })
     };
+    
 
     html! {
         <>
@@ -289,7 +235,6 @@ pub fn repository_paginator(props: &Props) -> Html {
             }
             // TODO: I don't like this .clone(), but passing references got us into lifetime hell.
             <RepositoryList repositories={ repository_paginator_state.repositories.clone() }
-                            archive_state_map = { archive_state_map }
                             {on_checkbox_change} />
         </>
     }

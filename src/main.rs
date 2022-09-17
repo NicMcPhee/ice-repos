@@ -13,7 +13,7 @@ use ice_repos::{components::{
     about::About,
     organization_entry::OrganizationEntry,
     repository_paginator::RepositoryPaginator,
-}, repository::AppState};
+}, repository::Organization};
 
 // ===================================================================================
 // for {username}.github.io/{repo_name}
@@ -57,18 +57,8 @@ fn switch(routes: &Route) -> Html {
 
 #[function_component(HomePage)]
 fn home_page() -> Html {
-    // let organization = use_state(|| String::from(""));
-
-    let (state, _) = use_store::<AppState>();
-    let organization = state.organization;
-
-    // let on_submit: Callback<String> = {
-    //     let organization = organization.clone();
-    //     Callback::from(move |string| { 
-    //         organization.set(Some(string));
-    //         // web_sys::console::log_1(&format!("We got <{string}> from the text input!").into()) 
-    //     })
-    // };
+    let (organization, _) = use_store::<Organization>();
+    let organization = organization.name.as_ref();
 
     html! {
         <div class="grid grid-cols-1 divide-y flex flex-col space-y-8 m-16">
@@ -80,6 +70,8 @@ fn home_page() -> Html {
             </div>
 
             // Where the list of repositories go
+            // TODO: Maybe move this `if` into the paginator so that `HomePage` doesn't need to ever
+            //   access any part of the global state. 
             if let Some(organization) = organization {
                 <div>
                     <h2 class="text-2xl">{ format!("The list of repositories for the organization {}", organization) }</h2>

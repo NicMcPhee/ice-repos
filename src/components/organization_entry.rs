@@ -11,12 +11,7 @@ use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-use crate::repository::AppState;
-
-// #[derive(Clone, PartialEq, Properties)]
-// pub struct Props {
-//     pub on_submit: Callback<String>,
-// }
+use crate::repository::Organization;
 
 // * Change the state when the text area loses focus instead of requiring a click on the
 //   submit button.
@@ -30,8 +25,7 @@ use crate::repository::AppState;
 #[function_component(OrganizationEntry)]
 pub fn organization_entry() -> Html {
     let field_contents = use_state(|| String::from(""));
-
-    // let Props { on_submit } = props.clone();
+    let (_, dispatch) = use_store::<Organization>();
 
     let oninput = {
         let field_contents = field_contents.clone();
@@ -44,10 +38,7 @@ pub fn organization_entry() -> Html {
         let field_contents = field_contents.clone();
         Callback::from(move |_| {
             if !field_contents.is_empty() {
-                let (_, dispatch) = use_store::<AppState>();
-                dispatch.reduce_mut(|state| {
-                    state.organization = Some(field_contents.deref().clone());
-                });
+                dispatch.set(Organization { name: Some(field_contents.deref().clone()) });
             }
         })
     };
