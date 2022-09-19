@@ -4,20 +4,22 @@
 #![warn(clippy::expect_used)]
 
 use std::num::ParseIntError;
+use std::rc::Rc;
 
 use url::{Url, ParseError};
 
-use reqwasm::http::Request;
+use reqwasm::http::{Request};
 
 use yew::prelude::*;
+use yewdux::prelude::{use_store, Dispatch};
 
-use crate::repository::Repository;
+use crate::repository::{Repository, DesiredArchiveState, Organization, ArchiveStateMap};
 use crate::components::repository_list::RepositoryList;
 
-#[derive(Clone, PartialEq, Properties)]
-pub struct Props {
-    pub organization: String,
-}
+// TODO: Idea from @esitsu@Twitch is to wrap the State with either
+//   a Mutex or a RwLock so that we can directly modify the elements
+//   of the State. This means we don't have to call `.set()` to update
+//   the component state, and we might avoid some cloning as a result.
 
 #[derive(Debug)]
 struct State {
@@ -85,7 +87,7 @@ fn parse_last_page(link_str: &str) -> Result<Option<usize>, LinkParseError> {
 }
 
 // The GitHub default is 30; they allow no more than 100.
-const REPOS_PER_PAGE: u8 = 7;
+const REPOS_PER_PAGE: u8 = 3;
 
 fn paginator_button_class(page_number: usize, current_page: usize) -> String {
     if page_number == current_page { "btn btn-active".to_string() } else { "btn".to_string() }
@@ -123,10 +125,14 @@ fn handle_parse_error(err: &LinkParseError) {
         &format!("There was an error parsing the link field in the HTTP response: {:?}", err).into());
 }
 
-fn update_state_for_organization(organization: &String, current_page: usize, state: UseStateHandle<State>) {
-    web_sys::console::log_1(&format!("use_effect_with_deps called with organization {organization}.").into());
-    let organization = organization.clone();
+fn update_state_for_organization(organization: Rc<Organization>, archive_state_dispatch: Dispatch<ArchiveStateMap>, current_page: usize, state: UseStateHandle<State>) {
     wasm_bindgen_futures::spawn_local(async move {
+        assert!(organization.name.is_some());
+        // This unwrap() should be safe because the `RepositoryPaginator` is only rendered in
+        // `HomePage` if the organization is a `Some` variant.
+        #[allow(clippy::unwrap_used)]
+        let organization = organization.name.as_ref().unwrap();
+
         web_sys::console::log_1(&format!("spawn_local called with organization {organization}.").into());
         let request_url = format!("/orgs/{organization}/repos?sort=pushed&direction=asc&per_page={REPOS_PER_PAGE}&page={current_page}");
         let response = Request::get(&request_url).send().await.unwrap();
@@ -146,6 +152,9 @@ fn update_state_for_organization(organization: &String, current_page: usize, sta
         // what GitHub currently provides), which should greatly reduce the
         // size of the JSON package and the cost of the parsing.
         let repos_result: Vec<Repository> = response.json().await.unwrap();
+        archive_state_dispatch.reduce_mut(|archive_state_map| {
+            archive_state_map.with_repos(&repos_result);
+        });
         let repo_state = State {
             repositories: repos_result,
             current_page,
@@ -171,9 +180,12 @@ fn update_state_for_organization(organization: &String, current_page: usize, sta
 // a struct component to help avoid some of the function call/return issues
 // in the error handling.
 #[function_component(RepositoryPaginator)]
-pub fn repository_paginator(props: &Props) -> Html {
-    let Props { organization } = props;
-    web_sys::console::log_1(&format!("RepositoryPaginator called with organization {organization}.").into());
+pub fn repository_paginator() -> Html {
+    let (organization, _) = use_store::<Organization>();
+    let (_, archive_state_dispatch) = use_store::<ArchiveStateMap>();
+
+    web_sys::console::log_1(&format!("RepositoryPaginator called with organization {:?}.", organization.name).into());
+
     let repository_paginator_state = use_state(|| State {
         repositories: vec![],
         current_page: 1,
@@ -181,16 +193,26 @@ pub fn repository_paginator(props: &Props) -> Html {
     });
     {
         let repository_paginator_state = repository_paginator_state.clone();
-        let organization = organization.clone();
         let current_page = repository_paginator_state.current_page;
+        let archive_state_dispatch = archive_state_dispatch.clone();
         use_effect_with_deps(
             move |(organization, current_page)| {
-                update_state_for_organization(organization, *current_page, repository_paginator_state);
+                update_state_for_organization(organization.clone(), archive_state_dispatch, *current_page, repository_paginator_state);
                 || ()
             }, 
-            (organization, current_page));
+            (organization, current_page)
+        );
     }
-
+    
+    let on_checkbox_change: Callback<DesiredArchiveState> = {
+        Callback::from(move |desired_archive_state| {
+            let DesiredArchiveState { id, desired_archive_state } = desired_archive_state;
+            archive_state_dispatch.reduce_mut(|archive_state_map| {
+                archive_state_map.update_desired_state(id, desired_archive_state);
+            });
+        })
+    };
+    
     html! {
         <>
             if repository_paginator_state.last_page > 1 {
@@ -208,7 +230,8 @@ pub fn repository_paginator(props: &Props) -> Html {
                 </div>
             }
             // TODO: I don't like this .clone(), but passing references got us into lifetime hell.
-            <RepositoryList repositories={ repository_paginator_state.repositories.clone() } />
+            <RepositoryList repositories={ repository_paginator_state.repositories.clone() }
+                            {on_checkbox_change} />
         </>
     }
 }
