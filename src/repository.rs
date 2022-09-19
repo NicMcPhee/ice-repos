@@ -62,7 +62,6 @@ impl ArchiveStateMap {
 
     pub fn update_desired_state(&mut self, id: usize, desired_archive_state: bool) -> &mut Self {
         web_sys::console::log_1(&format!("Updating {id} to {desired_archive_state}").into());
-        // let mut map = self.map.clone();
         self.map.entry(id).and_modify(|p| { p.1 = desired_archive_state });
         web_sys::console::log_1(&format!("The resulting map was {self:?}").into());
         self
