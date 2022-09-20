@@ -3,7 +3,7 @@
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::expect_used)]
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use chrono::{DateTime, Local};
 
@@ -40,7 +40,7 @@ pub struct ArchiveStateMap {
     // containing the Repository struct and a boolean
     // indicating whether we want to archive that repository
     // or not.
-    pub map: HashMap<usize, (Repository, bool)>
+    pub map: BTreeMap<usize, (Repository, bool)>
 }
 
 impl ArchiveStateMap {
@@ -66,9 +66,8 @@ impl ArchiveStateMap {
         web_sys::console::log_1(&format!("The resulting map was {self:?}").into());
         self
     }
-}
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Store)]
-pub struct DesiredState {
-    pub map: ArchiveStateMap
+    pub fn get_repos_to_archive(&self) -> impl Iterator<Item = &Repository> {
+        self.map.values().filter_map(|(repo, to_archive)| to_archive.then_some(repo))
+    }
 }
