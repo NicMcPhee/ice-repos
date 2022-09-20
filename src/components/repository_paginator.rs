@@ -10,9 +10,11 @@ use url::{Url, ParseError};
 
 use reqwasm::http::{Request};
 
+use yew_router::prelude::*;
 use yew::prelude::*;
 use yewdux::prelude::{use_store, Dispatch};
 
+use crate::Route;
 use crate::repository::{Repository, DesiredArchiveState, Organization, ArchiveStateMap};
 use crate::components::repository_list::RepositoryList;
 
@@ -182,15 +184,19 @@ fn update_state_for_organization(organization: Rc<Organization>, archive_state_d
 #[function_component(RepositoryPaginator)]
 pub fn repository_paginator() -> Html {
     let (organization, _) = use_store::<Organization>();
-    let (_, archive_state_dispatch) = use_store::<ArchiveStateMap>();
+    let (archive_state_map, archive_state_dispatch) = use_store::<ArchiveStateMap>();
 
     web_sys::console::log_1(&format!("RepositoryPaginator called with organization {:?}.", organization.name).into());
+    web_sys::console::log_1(&format!("Current ArchiveStateMap is {:?}.", archive_state_map).into());
 
     let repository_paginator_state = use_state(|| State {
         repositories: vec![],
         current_page: 1,
         last_page: 0 // This is "wrong" and needs to be set after we've gotten our response.
     });
+    // TODO: We want to see if the current page has already been loaded, and only do
+    // `update_state_for_organization` if it has not been loaded yet. Might make sense
+    // to fix this along with switching to "Prev"/"Next" UI model.
     {
         let repository_paginator_state = repository_paginator_state.clone();
         let current_page = repository_paginator_state.current_page;
@@ -212,21 +218,29 @@ pub fn repository_paginator() -> Html {
             });
         })
     };
+
+    let history = use_history().unwrap();
+    let onclick = Callback::from(move |_: MouseEvent| history.push(Route::ReviewAndSubmit));
     
+    // TODO: Instead of having buttons for all the pages, instead have just a
+    // pair of "Prev"/"Next" buttons (and maybe some indication of where you are,
+    // e.g., page 3 of 4). When you're on the last page, "Next" becomes "Review & Submit".
+    // Thanks to @esitsu for the nice idea!
     html! {
         <>
             if repository_paginator_state.last_page > 1 {
                 <div class="btn-group">
-                // It's possible that `html_nested` would be a useful tool here.
-                // https://docs.rs/yew/latest/yew/macro.html_nested.html
-                {(1..=repository_paginator_state.last_page).map(|page_number| {
-                        html! {
-                            <button class={ paginator_button_class(page_number, repository_paginator_state.current_page) }
-                                    onclick={ make_button_callback(page_number, repository_paginator_state.clone()) }>
-                                { page_number }
-                            </button>
-                        }
-                    }).collect::<Html>()}
+                    // It's possible that `html_nested` would be a useful tool here.
+                    // https://docs.rs/yew/latest/yew/macro.html_nested.html
+                    {(1..=repository_paginator_state.last_page).map(|page_number| {
+                            html! {
+                                <button class={ paginator_button_class(page_number, repository_paginator_state.current_page) }
+                                        onclick={ make_button_callback(page_number, repository_paginator_state.clone()) }>
+                                    { page_number }
+                                </button>
+                            }
+                        }).collect::<Html>()}
+                    <button class="btn" {onclick}>{ "Review & Submit" }</button>
                 </div>
             }
             // TODO: I don't like this .clone(), but passing references got us into lifetime hell.
