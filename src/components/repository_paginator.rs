@@ -10,7 +10,7 @@ use yew::prelude::*;
 use yewdux::prelude::{use_store, Dispatch};
 
 use crate::Route;
-use crate::repository::{Repository, DesiredArchiveState, Organization, ArchiveStateMap};
+use crate::repository::{Repository, DesiredArchiveState, Organization, ArchiveStateMap, ArchiveState};
 use crate::components::repository_list::RepositoryList;
 
 // TODO: Idea from @esitsu@Twitch is to wrap the State with either
@@ -209,7 +209,7 @@ pub fn repository_paginator() -> Html {
         Callback::from(move |desired_archive_state| {
             let DesiredArchiveState { id, desired_archive_state } = desired_archive_state;
             archive_state_dispatch.reduce_mut(|archive_state_map| {
-                archive_state_map.update_desired_state(id, desired_archive_state);
+                archive_state_map.update_desired_state(id, ArchiveState::from_paginator_state(desired_archive_state));
             });
         })
     };
