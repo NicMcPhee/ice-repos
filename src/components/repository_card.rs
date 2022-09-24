@@ -1,8 +1,3 @@
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
-#![warn(clippy::unwrap_used)]
-#![warn(clippy::expect_used)]
-
 use wasm_bindgen::{UnwrapThrowExt, JsCast};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;

@@ -1,3 +1,9 @@
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![warn(clippy::unwrap_used)]
+#![warn(clippy::expect_used)]
+#![deny(bindings_with_variant_name)]
+
 use yew_router::Routable;
 
 pub mod components;

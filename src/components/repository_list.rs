@@ -1,8 +1,3 @@
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
-#![warn(clippy::unwrap_used)]
-#![warn(clippy::expect_used)]
-
 use yew::prelude::*;
 use yewdux::prelude::use_store;
 

@@ -1,8 +1,3 @@
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
-#![warn(clippy::unwrap_used)]
-#![warn(clippy::expect_used)]
-
 use std::num::ParseIntError;
 use std::rc::Rc;
 
