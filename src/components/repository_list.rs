@@ -7,18 +7,21 @@ use crate::components::repository_card::RepositoryCard;
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
     pub repositories: Vec<Repository>,
+    pub empty_repo_list_message: String,
     pub on_checkbox_change: Callback<DesiredArchiveState>
 }
 
 #[function_component(RepositoryList)]
 pub fn repository_list(props: &Props) -> Html {
-    let Props { repositories, on_checkbox_change } = props;
+    let Props { repositories, 
+                empty_repo_list_message, 
+                on_checkbox_change } = props;
 
     let (archive_state_map, _) = use_store::<ArchiveStateMap>();
 
     if repositories.is_empty() {
         html! {
-            <p>{ "Loading…" }</p>
+            <p>{ empty_repo_list_message }</p>
         }
     } else {
         repositories.iter()

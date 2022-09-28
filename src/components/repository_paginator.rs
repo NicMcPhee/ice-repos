@@ -13,11 +13,6 @@ use crate::Route;
 use crate::repository::{Repository, DesiredArchiveState, Organization, ArchiveStateMap, ArchiveState};
 use crate::components::repository_list::RepositoryList;
 
-// TODO: Idea from @esitsu@Twitch is to wrap the State with either
-//   a Mutex or a RwLock so that we can directly modify the elements
-//   of the State. This means we don't have to call `.set()` to update
-//   the component state, and we might avoid some cloning as a result.
-
 #[derive(Debug)]
 struct State {
     // TODO: This should probably be an Option<Vec<Repository>> to distinguish between
@@ -240,6 +235,7 @@ pub fn repository_paginator() -> Html {
             }
             // TODO: I don't like this .clone(), but passing references got us into lifetime hell.
             <RepositoryList repositories={ repository_paginator_state.repositories.clone() }
+                            empty_repo_list_message={ "Loading..." }
                             {on_checkbox_change} />
         </>
     }
