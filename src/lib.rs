@@ -10,7 +10,7 @@ pub mod services;
 pub mod components;
 pub mod repository;
 
-#[derive(Clone, Routable, PartialEq)]
+#[derive(Clone, Routable, PartialEq, Eq)]
 pub enum Route {
     #[at("/ice-repos/review-and-submit")]
     ReviewAndSubmit,

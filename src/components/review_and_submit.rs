@@ -25,7 +25,7 @@ pub fn review_and_submit() -> Html {
     let onclick: Callback<MouseEvent> = {
         let archive_state_map = archive_state_map.clone();
         Callback::from(move |_| {
-            archive_repositories(archive_state_map.get_repos_to_archive())
+            archive_repositories(archive_state_map.get_repos_to_archive());
         })
     };
 

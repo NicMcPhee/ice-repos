@@ -42,24 +42,28 @@ pub enum ArchiveState {
 
 impl ArchiveState {
     /// Convert a boolean, essentially the toggle state of a checkbox in the
-    /// Paginator component and convert it into an ArchiveState. In the
-    /// paginator, we want to use the Skip state to indicate that we do not
+    /// Paginator component and convert it into an `ArchiveState`. In the
+    /// paginator, we want to use the `Skip` state to indicate that we do not
     /// want to see this archive in the review phase.
-    pub fn from_paginator_state(b: bool) -> Self {
-        match b {
-            true => Self::Archive,
-            false => Self::Skip
+    #[must_use]
+    pub const fn from_paginator_state(b: bool) -> Self {
+        if b {
+            Self::Archive
+        } else {
+            Self::Skip
         }
     }
 
     /// Convert a boolean, essentially the toggle state of a checkbox in the
-    /// Review & Submit component and convert it into an ArchiveState. In
-    /// the review, we want to use the SkippedInReview to indicate that we
+    /// Review & Submit component and convert it into an `ArchiveState`. In
+    /// the review, we want to use the `SkippedInReview` to indicate that we
     /// do want to continue to see this archive in the review phase.
-    pub fn from_review_state(b: bool) -> Self {
-        match b {
-            true => Self::Archive,
-            false => Self::SkippedInReview
+    #[must_use]
+    pub const fn from_review_state(b: bool) -> Self {
+        if b {
+            Self::Archive
+        } else {
+            Self::SkippedInReview
         }
     }
 }
@@ -87,10 +91,7 @@ impl ArchiveStateMap {
     pub fn get_desired_state(&self, id: usize) -> Option<bool> {
         self.map
             .get(&id)
-            .map(|(_, archive_state)| match archive_state {
-                ArchiveState::Archive => true,
-                _ => false
-            })
+            .map(|(_, archive_state)| matches!(archive_state, ArchiveState::Archive))
     }
 
     pub fn update_desired_state(&mut self, id: usize, desired_archive_state: ArchiveState) -> &mut Self {
@@ -108,6 +109,7 @@ impl ArchiveStateMap {
             })
     }
 
+    #[must_use]
     pub fn get_owned_repos_to_review(&self) -> Vec<Repository> {
         self.get_repos_to_review().cloned().collect()
     }
