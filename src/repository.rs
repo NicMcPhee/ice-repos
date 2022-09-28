@@ -107,4 +107,8 @@ impl ArchiveStateMap {
                 (*to_archive != ArchiveState::Skip).then_some(repo)
             })
     }
+
+    pub fn get_owned_repos_to_review(&self) -> Vec<Repository> {
+        self.get_repos_to_review().cloned().collect()
+    }
 }
