@@ -111,4 +111,12 @@ impl ArchiveStateMap {
     pub fn get_owned_repos_to_review(&self) -> Vec<Repository> {
         self.get_repos_to_review().cloned().collect()
     }
+
+    pub fn get_repos_to_archive(&self) -> impl Iterator<Item = &Repository> {
+        self.map
+            .values()
+            .filter_map(|(repo, to_archive)| {
+                (*to_archive == ArchiveState::Archive).then_some(repo)
+            })
+    }
 }
