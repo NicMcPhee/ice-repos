@@ -13,7 +13,7 @@ use crate::Route;
 use crate::repository::{Repository, DesiredArchiveState, Organization, ArchiveStateMap, ArchiveState};
 use crate::components::repository_list::RepositoryList;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct State {
     // TODO: This should probably be an Option<Vec<Repository>> to distinguish between
     // an organization that has no repositories vs. we're waiting for repositories to
@@ -79,17 +79,18 @@ fn parse_last_page(link_str: &str) -> Result<Option<usize>, LinkParseError> {
 }
 
 // The GitHub default is 30; they allow no more than 100.
-const REPOS_PER_PAGE: u8 = 3;
+const REPOS_PER_PAGE: u8 = 30;
 
-fn paginator_button_class(page_number: usize, current_page: usize) -> String {
-    if page_number == current_page { "btn btn-active".to_string() } else { "btn".to_string() }
+fn prev_button_class(current_page: usize) -> String {
+    let mut class = "btn btn-primary".to_string();
+    if current_page == 1 {
+        class.push_str(" btn-disabled");
+    }
+    class
 }
 
 fn make_button_callback(page_number: usize, repository_paginator_state: UseStateHandle<State>) -> Callback<MouseEvent> {
     Callback::from(move |_| {
-        // Only make a new state if the page_number is different than the current_page number.
-        if page_number == repository_paginator_state.current_page { return }
-
         let repo_state = State {
             repositories: vec![],
             current_page: page_number,
@@ -184,12 +185,15 @@ pub fn repository_paginator() -> Html {
         current_page: 1,
         last_page: 0 // This is "wrong" and needs to be set after we've gotten our response.
     });
+
+    let State { repositories, current_page, last_page }
+        = (*repository_paginator_state).clone();
+
     // TODO: We want to see if the current page has already been loaded, and only do
     // `update_state_for_organization` if it has not been loaded yet. Might make sense
     // to fix this along with switching to "Prev"/"Next" UI model.
     {
         let repository_paginator_state = repository_paginator_state.clone();
-        let current_page = repository_paginator_state.current_page;
         let archive_state_dispatch = archive_state_dispatch.clone();
         use_effect_with_deps(
             move |(organization, current_page)| {
@@ -209,34 +213,38 @@ pub fn repository_paginator() -> Html {
         })
     };
 
-    let history = use_history().unwrap();
-    let onclick = Callback::from(move |_: MouseEvent| history.push(Route::ReviewAndSubmit));
+    let prev: Callback<MouseEvent> = {
+        // assert!(current_page > 1);
+        make_button_callback(current_page-1, repository_paginator_state.clone())
+    };
+
+    let next_or_review: Callback<MouseEvent> = {
+        if current_page < last_page {
+            make_button_callback(current_page+1, repository_paginator_state)
+        } else {
+            let history = use_history().unwrap();
+            Callback::from(move |_: MouseEvent| history.push(Route::ReviewAndSubmit))
+        }
+    };
     
-    // TODO: Instead of having buttons for all the pages, instead have just a
-    // pair of "Prev"/"Next" buttons (and maybe some indication of where you are,
-    // e.g., page 3 of 4). When you're on the last page, "Next" becomes "Review & Submit".
-    // Thanks to @esitsu for the nice idea!
     html! {
         <>
-            if repository_paginator_state.last_page > 1 {
-                <div class="btn-group">
-                    // It's possible that `html_nested` would be a useful tool here.
-                    // https://docs.rs/yew/latest/yew/macro.html_nested.html
-                    {(1..=repository_paginator_state.last_page).map(|page_number| {
-                            html! {
-                                <button class={ paginator_button_class(page_number, repository_paginator_state.current_page) }
-                                        onclick={ make_button_callback(page_number, repository_paginator_state.clone()) }>
-                                    { page_number }
-                                </button>
-                            }
-                        }).collect::<Html>()}
-                    <button class="btn" {onclick}>{ "Review & Submit" }</button>
-                </div>
-            }
-            // TODO: I don't like this .clone(), but passing references got us into lifetime hell.
-            <RepositoryList repositories={ repository_paginator_state.repositories.clone() }
+            <RepositoryList {repositories}
                             empty_repo_list_message={ "Loading..." }
                             {on_checkbox_change} />
+            if last_page > 1 {
+                <div class="btn-group">
+                    <button class={ prev_button_class(current_page) } onclick={prev}>
+                        { "Prev" }
+                    </button>
+                    <button class="btn btn-active" disabled=true>
+                        { format!("{}/{}", current_page, last_page) }
+                    </button>
+                    <button class="btn btn-primary" onclick={next_or_review}>
+                        { if current_page == last_page { "Review & Submit" } else { "Next" } }
+                    </button>
+                </div>
+            }
         </>
     }
 }

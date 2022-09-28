@@ -30,10 +30,6 @@ pub fn review_and_submit() -> Html {
     };
 
     // TODO: We need some kind of shared header that comes across to pages like this.
-
-    // TODO: We need a "Submit" button that will actually spin up all the archiving
-    //   requests.
-
     html! {
         <div>
             <RepositoryList repositories={ archive_state_map.get_owned_repos_to_review() }
