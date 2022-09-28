@@ -13,7 +13,8 @@ use ice_repos::{components::{
     about::About,
     organization_entry::OrganizationEntry,
     repository_paginator::RepositoryPaginator,
-}, repository::Organization};
+    review_and_submit::ReviewAndSubmit
+}, repository::Organization, Route};
 
 // ===================================================================================
 // for {username}.github.io/{repo_name}
@@ -27,17 +28,6 @@ enum RootRoute {
     Route,
 }
 
-#[derive(Clone, Routable, PartialEq)]
-enum Route {
-    // #[at("/ice-repos/submit")]
-    // Submit,
-    #[at("/ice-repos/about")]
-    About,
-    #[not_found]
-    #[at("/ice-repos/404")]
-    NotFound,
-}
-
 fn root_route(routes: &RootRoute) -> Html {
     match routes {
         RootRoute::Home => html! { <HomePage/> },
@@ -49,7 +39,7 @@ fn root_route(routes: &RootRoute) -> Html {
 
 fn switch(routes: &Route) -> Html {
     match routes {
-        // Route::Submit => html! { <Submit/> },
+        Route::ReviewAndSubmit => html! { <ReviewAndSubmit/> },
         Route::About => html! { <About/> },
         Route::NotFound => html! { <p>{ "Not Found" }</p> },
     }
