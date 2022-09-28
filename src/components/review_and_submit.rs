@@ -1,8 +1,10 @@
+use web_sys::MouseEvent;
 use yew::{function_component, html, Callback};
 use yewdux::prelude::use_store;
 
 use crate::repository::{ArchiveStateMap, DesiredArchiveState, ArchiveState};
 use crate::components::repository_list::RepositoryList;
+use crate::services::archive_repos::archive_repositories;
 
 /// Review selected repositories to archive and
 /// submit archive requests.
@@ -20,14 +22,34 @@ pub fn review_and_submit() -> Html {
         })
     };
 
+    let onclick: Callback<MouseEvent> = {
+        let archive_state_map = archive_state_map.clone();
+        Callback::from(move |_| {
+            archive_repositories(archive_state_map.get_repos_to_archive())
+        })
+    };
+
     // TODO: We need some kind of shared header that comes across to pages like this.
 
     // TODO: We need a "Submit" button that will actually spin up all the archiving
     //   requests.
 
     html! {
-        <RepositoryList repositories={ archive_state_map.get_owned_repos_to_review() }
-                        empty_repo_list_message={ "You selected no repositories to archive" }
-                        { on_checkbox_change } />
+        <div>
+            <RepositoryList repositories={ archive_state_map.get_owned_repos_to_review() }
+                            empty_repo_list_message={ "You selected no repositories to archive" }
+                            { on_checkbox_change } />
+
+            <p class="text-xl text-red-700">{
+                "Clicking the 'Archive selected repositories' button will send archive requests
+                 to GitHub for each of the selected repositories. This *cannot* be undone
+                 here in ice-repos, and un-archiving in the GitHub web interface is possible
+                 but tedious for large number of repositories. Use with caution."
+            }</p>
+
+            <div class="form-control mt-6">
+                <button type="submit" class="btn btn-primary" {onclick}>{ "Archive selected repositories" }</button>
+            </div>
+        </div>
     }
 }
