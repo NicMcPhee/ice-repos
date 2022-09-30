@@ -4,6 +4,10 @@ use yewdux::prelude::use_store;
 use crate::repository::{Repository, DesiredArchiveState, ArchiveStateMap};
 use crate::components::repository_card::RepositoryCard;
 
+// TODO: Can we use `AttrValue` instead of `String` here?
+// `AttrValue` is supposed to be more efficient
+// because cloning `String`s can be expensive.
+// https://yew.rs/docs/concepts/components/properties#memoryspeed-overhead-of-using-properties
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
     pub repositories: Vec<Repository>,

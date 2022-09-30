@@ -6,6 +6,15 @@ use serde::Deserialize;
 
 use yewdux::prelude::*;
 
+// TODO: Can we use `AttrValue` instead of `String` here
+// and in other places where there are properties?
+// I'm not sure what would be necessary here since
+// serde is filling these in, but maybe for other
+// properties. `AttrValue::from(string)` may be
+// important in doing the necessary conversions.
+// `AttrValue` is supposed to be more efficient
+// because cloning `String`s can be expensive.
+// https://yew.rs/docs/concepts/components/properties#memoryspeed-overhead-of-using-properties
 #[derive(Clone, Eq, PartialEq, Deserialize, Debug)]
 pub struct Repository {
     pub id: usize,
@@ -24,6 +33,10 @@ pub struct DesiredArchiveState {
     pub desired_archive_state: bool
 }
 
+// TODO: Can we use `AttrValue` instead of `String` here?
+// `AttrValue` is supposed to be more efficient
+// because cloning `String`s can be expensive.
+// https://yew.rs/docs/concepts/components/properties#memoryspeed-overhead-of-using-properties
 #[derive(Debug, Default, Clone, PartialEq, Eq, Store)]
 pub struct Organization {
     pub name: Option<String>
