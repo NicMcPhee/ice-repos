@@ -10,17 +10,14 @@ use yew::prelude::*;
 use yewdux::prelude::{use_store, Dispatch};
 
 use crate::Route;
-use crate::repository::{Repository, DesiredArchiveState, Organization, ArchiveStateMap, ArchiveState};
+use crate::repository::{Repository, DesiredArchiveState, Organization, ArchiveStateMap, ArchiveState, PageRepoMap, PageNumber};
 use crate::components::repository_list::RepositoryList;
 
 #[derive(Debug, Clone)]
 struct State {
-    // TODO: This should probably be an Option<Vec<Repository>> to distinguish between
-    // an organization that has no repositories vs. we're waiting for repositories to
-    // be loaded.
-    repositories: Vec<Repository>,
-    current_page: usize,
-    last_page: usize,
+    current_page: PageNumber,
+    last_page: PageNumber,
+    loaded: bool,
 }
 
 #[derive(Debug)]
@@ -50,7 +47,7 @@ impl From<ParseIntError> for LinkParseError {
  * 
  * <https://api.github.com/organizations/18425666/repos?page=1&per_page=5>; rel="prev", <https://api.github.com/organizations/18425666/repos?page=3&per_page=5>; rel="next", <https://api.github.com/organizations/18425666/repos?page=5&per_page=5>; rel="last", <https://api.github.com/organizations/18425666/repos?page=1&per_page=5>; rel="first"
  */
-fn parse_last_page(link_str: &str) -> Result<Option<usize>, LinkParseError> {
+fn parse_last_page(link_str: &str) -> Result<Option<PageNumber>, LinkParseError> {
     // This split won't do the desired thing if there can ever be a comma in a
     // URL, but that doesn't seem likely given the structure of these GitHub URLs.
     let last_entry = link_str
@@ -73,15 +70,15 @@ fn parse_last_page(link_str: &str) -> Result<Option<usize>, LinkParseError> {
         .map(|(_, v)| v)
         .ok_or_else(|| LinkParseError::PageEntryMissing(last_url.clone()))?;
     // This fails and returns a LinkParseError::PageNumberParseError if for some
-    // reason the `num_pages_str` can't be parsed to a `usize`. This would also
+    // reason the `num_pages_str` can't be parsed to a `PageNumber`. This would also
     // presumably be an error or major API change on the part of GitHub.
-    Ok(Some(num_pages_str.parse::<usize>()?))
+    Ok(Some(num_pages_str.parse::<PageNumber>()?))
 }
 
 // The GitHub default is 30; they allow no more than 100.
 const REPOS_PER_PAGE: u8 = 30;
 
-fn prev_button_class(current_page: usize) -> String {
+fn prev_button_class(current_page: PageNumber) -> String {
     let mut class = "btn btn-primary".to_string();
     if current_page == 1 {
         class.push_str(" btn-disabled");
@@ -89,7 +86,7 @@ fn prev_button_class(current_page: usize) -> String {
     class
 }
 
-fn make_button_callback(page_number: usize, repository_paginator_state: UseStateHandle<State>) -> Callback<MouseEvent> {
+fn make_button_callback(page_number: PageNumber, repository_paginator_state: UseStateHandle<State>, page_map: &PageRepoMap) -> Callback<MouseEvent> {
     Callback::from(move |_| {
         let repo_state = State {
             repositories: vec![],
@@ -102,7 +99,7 @@ fn make_button_callback(page_number: usize, repository_paginator_state: UseState
     })
 }
 
-fn try_extract(link_str: &str, current_page: usize) -> Result<usize, LinkParseError> {
+fn try_extract(link_str: &str, current_page: PageNumber) -> Result<PageNumber, LinkParseError> {
     let parse_result = parse_last_page(link_str)?
         .unwrap_or(current_page);
     Ok(parse_result)
@@ -118,7 +115,7 @@ fn handle_parse_error(err: &LinkParseError) {
         &format!("There was an error parsing the link field in the HTTP response: {:?}", err).into());
 }
 
-fn update_state_for_organization(organization: Rc<Organization>, archive_state_dispatch: Dispatch<ArchiveStateMap>, current_page: usize, state: UseStateHandle<State>) {
+fn update_state_for_organization(organization: Rc<Organization>, archive_state_dispatch: Dispatch<ArchiveStateMap>, page_map_dispatch: Dispatch<PageRepoMap>, current_page: PageNumber, state: UseStateHandle<State>) {
     wasm_bindgen_futures::spawn_local(async move {
         assert!(organization.name.is_some());
         // This unwrap() should be safe because the `RepositoryPaginator` is only rendered in

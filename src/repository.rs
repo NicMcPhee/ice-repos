@@ -137,3 +137,5 @@ impl ArchiveStateMap {
             })
     }
 }
+
+pub type PageNumber = usize;
