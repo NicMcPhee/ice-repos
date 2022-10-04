@@ -1,7 +1,7 @@
 use yew::prelude::*;
 use yewdux::prelude::use_store;
 
-use crate::repository::{Repository, DesiredArchiveState, ArchiveStateMap};
+use crate::repository::{RepoId, DesiredArchiveState, ArchiveStateMap};
 use crate::components::repository_card::RepositoryCard;
 
 // TODO: Can we use `AttrValue` instead of `String` here?
@@ -10,14 +10,14 @@ use crate::components::repository_card::RepositoryCard;
 // https://yew.rs/docs/concepts/components/properties#memoryspeed-overhead-of-using-properties
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
-    pub repositories: Vec<Repository>,
+    pub repo_ids: Option<Vec<RepoId>>,
     pub empty_repo_list_message: String,
     pub on_checkbox_change: Callback<DesiredArchiveState>
 }
 
 #[function_component(RepositoryList)]
 pub fn repository_list(props: &Props) -> Html {
-    let Props { repositories, 
+    let Props { repo_ids, 
                 empty_repo_list_message, 
                 on_checkbox_change } = props;
 

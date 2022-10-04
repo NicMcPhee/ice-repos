@@ -6,6 +6,8 @@ use serde::Deserialize;
 
 use yewdux::prelude::*;
 
+pub type RepoId = usize;
+
 // TODO: Can we use `AttrValue` instead of `String` here
 // and in other places where there are properties?
 // I'm not sure what would be necessary here since
@@ -17,7 +19,7 @@ use yewdux::prelude::*;
 // https://yew.rs/docs/concepts/components/properties#memoryspeed-overhead-of-using-properties
 #[derive(Clone, Eq, PartialEq, Deserialize, Debug)]
 pub struct Repository {
-    pub id: usize,
+    pub id: RepoId,
     pub name: String,
     pub description: Option<String>,
     pub archived: bool,
@@ -29,7 +31,7 @@ pub struct Repository {
 }
 
 pub struct DesiredArchiveState {
-    pub id: usize,
+    pub id: RepoId,
     pub desired_archive_state: bool
 }
 
@@ -87,7 +89,7 @@ pub struct ArchiveStateMap {
     // containing the Repository struct and a boolean
     // indicating whether we want to archive that repository
     // or not.
-    pub map: BTreeMap<usize, (Repository, ArchiveState)>
+    pub map: BTreeMap<RepoId, (Repository, ArchiveState)>
 }
 
 impl ArchiveStateMap {
@@ -101,13 +103,13 @@ impl ArchiveStateMap {
     }
 
     #[must_use]
-    pub fn get_desired_state(&self, id: usize) -> Option<bool> {
+    pub fn get_desired_state(&self, id: RepoId) -> Option<bool> {
         self.map
             .get(&id)
             .map(|(_, archive_state)| matches!(archive_state, ArchiveState::Archive))
     }
 
-    pub fn update_desired_state(&mut self, id: usize, desired_archive_state: ArchiveState) -> &mut Self {
+    pub fn update_desired_state(&mut self, id: RepoId, desired_archive_state: ArchiveState) -> &mut Self {
         web_sys::console::log_1(&format!("Updating {id} to {desired_archive_state:?}").into());
         self.map.entry(id).and_modify(|p| { p.1 = desired_archive_state });
         web_sys::console::log_1(&format!("The resulting map was {self:?}").into());
