@@ -86,6 +86,14 @@ fn prev_button_class(current_page: PageNumber) -> String {
     class
 }
 
+fn next_button_class(loaded: bool) -> String {
+    let mut class = "btn btn-primary".to_string();
+    if !loaded {
+        class.push_str(" btn-disabled");
+    }
+    class
+}
+
 fn make_button_callback(page_number: PageNumber, repository_paginator_state: UseStateHandle<State>, page_map: &PageRepoMap) -> Callback<MouseEvent> {
     let loaded = page_map.has_seen_page(page_number);
     Callback::from(move |_| {
@@ -237,26 +245,22 @@ pub fn repository_paginator() -> Html {
         }
     };
     
-    // TODO: We probably want to deactive the "Next" button if we're still in
-    //   the unloaded state.
     html! {
         <>
             <RepositoryList repo_ids={page_map.get_repo_ids(current_page)}
                             empty_repo_list_message={ "Loading..." }
                             {on_checkbox_change} />
-            if last_page > 1 {
-                <div class="btn-group">
-                    <button class={ prev_button_class(current_page) } onclick={prev}>
-                        { "Prev" }
+            <div class="btn-group">
+                <button class={ prev_button_class(current_page) } onclick={prev}>
+                    { "Prev" }
                     </button>
-                    <button class="btn btn-active" disabled=true>
-                        { format!("{}/{}", current_page, last_page) }
-                    </button>
-                    <button class="btn btn-primary" onclick={next_or_review}>
-                        { if current_page == last_page { "Review & Submit" } else { "Next" } }
-                    </button>
-                </div>
-            }
+                <button class="btn btn-active" disabled=true>
+                    { format!("{}/{}", current_page, last_page) }
+                </button>
+                <button class={ next_button_class(loaded) } onclick={next_or_review}>
+                    { if current_page == last_page { "Review & Submit" } else { "Next" } }
+                </button>
+            </div>
         </>
     }
 }
