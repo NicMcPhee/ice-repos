@@ -87,11 +87,12 @@ fn prev_button_class(current_page: PageNumber) -> String {
 }
 
 fn make_button_callback(page_number: PageNumber, repository_paginator_state: UseStateHandle<State>, page_map: &PageRepoMap) -> Callback<MouseEvent> {
+    let loaded = page_map.has_seen_page(page_number);
     Callback::from(move |_| {
         let repo_state = State {
-            repositories: vec![],
             current_page: page_number,
-            last_page: repository_paginator_state.last_page
+            last_page: repository_paginator_state.last_page,
+            loaded,
         };
         web_sys::console::log_1(&format!("make_button_callback called with page number {page_number}.").into());
         web_sys::console::log_1(&format!("New state is {repo_state:?}.").into());
@@ -142,14 +143,21 @@ fn update_state_for_organization(organization: Rc<Organization>, archive_state_d
         // what GitHub currently provides), which should greatly reduce the
         // size of the JSON package and the cost of the parsing.
         let repos_result: Vec<Repository> = response.json().await.unwrap();
+        
         archive_state_dispatch.reduce_mut(|archive_state_map| {
             archive_state_map.with_repos(&repos_result);
         });
+
+        page_map_dispatch.reduce_mut(|page_map| {
+            page_map.add_page(
+                current_page, 
+                repos_result.iter().map(|r| r.id).collect());
+        });
+
         let repo_state = State {
-            repositories: repos_result,
             current_page,
-            // I'm increasingly wondering if Yew contexts are the right way to handle all this.
-            last_page
+            last_page,
+            loaded: true,
         };
         web_sys::console::log_1(&format!("The new repo state is <{repo_state:?}>.").into());
         state.set(repo_state);
@@ -172,18 +180,19 @@ fn update_state_for_organization(organization: Rc<Organization>, archive_state_d
 #[function_component(RepositoryPaginator)]
 pub fn repository_paginator() -> Html {
     let (organization, _) = use_store::<Organization>();
+    let (page_map, page_map_dispatch) = use_store::<PageRepoMap>();
     let (archive_state_map, archive_state_dispatch) = use_store::<ArchiveStateMap>();
 
     web_sys::console::log_1(&format!("RepositoryPaginator called with organization {:?}.", organization.name).into());
     web_sys::console::log_1(&format!("Current ArchiveStateMap is {:?}.", archive_state_map).into());
 
     let repository_paginator_state = use_state(|| State {
-        repositories: vec![],
         current_page: 1,
-        last_page: 0 // This is "wrong" and needs to be set after we've gotten our response.
+        last_page: 0, // This is "wrong" and needs to be set after we've gotten our response.
+        loaded: false,
     });
 
-    let State { repositories, current_page, last_page }
+    let State { current_page, last_page, loaded }
         = (*repository_paginator_state).clone();
 
     // TODO: We want to see if the current page has already been loaded, and only do
@@ -193,11 +202,15 @@ pub fn repository_paginator() -> Html {
         let repository_paginator_state = repository_paginator_state.clone();
         let archive_state_dispatch = archive_state_dispatch.clone();
         use_effect_with_deps(
-            move |(organization, current_page)| {
-                update_state_for_organization(organization.clone(), archive_state_dispatch, *current_page, repository_paginator_state);
+            move |(organization, current_page, _)| {
+                update_state_for_organization(organization.clone(), 
+                    archive_state_dispatch, 
+                    page_map_dispatch,
+                    *current_page, 
+                    repository_paginator_state);
                 || ()
             }, 
-            (organization, current_page)
+            (organization, current_page, loaded)
         );
     }
     
@@ -212,18 +225,20 @@ pub fn repository_paginator() -> Html {
 
     let prev: Callback<MouseEvent> = {
         // assert!(current_page > 1);
-        make_button_callback(current_page-1, repository_paginator_state.clone())
+        make_button_callback(current_page-1, repository_paginator_state.clone(), &page_map)
     };
 
     let next_or_review: Callback<MouseEvent> = {
         if current_page < last_page {
-            make_button_callback(current_page+1, repository_paginator_state)
+            make_button_callback(current_page+1, repository_paginator_state, &page_map)
         } else {
             let history = use_history().unwrap();
             Callback::from(move |_: MouseEvent| history.push(Route::ReviewAndSubmit))
         }
     };
     
+    // TODO: We probably want to deactive the "Next" button if we're still in
+    //   the unloaded state.
     html! {
         <>
             <RepositoryList repo_ids={page_map.get_repo_ids(current_page)}
