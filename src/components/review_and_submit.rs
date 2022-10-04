@@ -32,7 +32,7 @@ pub fn review_and_submit() -> Html {
     // TODO: We need some kind of shared header that comes across to pages like this.
     html! {
         <div>
-            <RepositoryList repositories={ archive_state_map.get_owned_repos_to_review() }
+            <RepositoryList repo_ids={ archive_state_map.get_repo_ids_to_review() }
                             empty_repo_list_message={ "You selected no repositories to archive" }
                             { on_checkbox_change } />
 

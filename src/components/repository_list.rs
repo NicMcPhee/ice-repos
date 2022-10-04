@@ -1,3 +1,4 @@
+use gloo::console::log;
 use yew::prelude::*;
 use yewdux::prelude::use_store;
 
@@ -23,18 +24,22 @@ pub fn repository_list(props: &Props) -> Html {
 
     let (archive_state_map, _) = use_store::<ArchiveStateMap>();
 
-    if repositories.is_empty() {
-        html! {
-            <p>{ empty_repo_list_message }</p>
-        }
-    } else {
-        repositories.iter()
-                    .map(|repository: &Repository| {
+    log!(format!("We're in repo list with repo IDs {repo_ids:?}"));
+    log!(format!("We're in repo list with ArchiveStateMap {archive_state_map:?}"));
+
+    #[allow(clippy::option_if_let_else)]
+    if let Some(repo_ids) = repo_ids {
+        repo_ids.iter()
+                .map(|repo_id: &RepoId| {
             html! {
-                <RepositoryCard repository={ repository.clone() } 
-                                desired_archive_state={ archive_state_map.get_desired_state(repository.id) } 
+                <RepositoryCard repository={ archive_state_map.get_repo(*repo_id).clone() } 
+                                desired_archive_state={ archive_state_map.get_desired_state(*repo_id) } 
                                 {on_checkbox_change} />
             }
         }).collect()
+    } else {
+        html! {
+            <p>{ empty_repo_list_message }</p>
+        }
     }
 }

@@ -226,7 +226,7 @@ pub fn repository_paginator() -> Html {
     
     html! {
         <>
-            <RepositoryList {repositories}
+            <RepositoryList repo_ids={page_map.get_repo_ids(current_page)}
                             empty_repo_list_message={ "Loading..." }
                             {on_checkbox_change} />
             if last_page > 1 {
