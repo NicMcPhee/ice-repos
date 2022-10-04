@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use chrono::{DateTime, Local};
 
@@ -44,6 +44,9 @@ pub struct Organization {
     pub name: Option<String>
 }
 
+// TODO: Add an `AlreadyArchived` option here and keep all the
+//   the repositories in all the maps regardless of whether they
+//   were archived in advance.
 /// The desired state for a given repository.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ArchiveState {
@@ -116,12 +119,27 @@ impl ArchiveStateMap {
         self
     }
 
+    /// # Panics
+    ///
+    /// Will panic `repo_id` isn't in the `ArchiveStateMap`.    
+    #[must_use]
+    pub fn get_repo(&self, repo_id: RepoId) -> &Repository {
+        assert!(self.map.contains_key(&repo_id), "Repository key {repo_id} not found in ArchiveStateMap");
+        #[allow(clippy::unwrap_used)]
+        self.map.get(&repo_id).map(|p| &p.0).unwrap()
+    }
+
     pub fn get_repos_to_review(&self) -> impl Iterator<Item = &Repository> {
         self.map
             .values()
             .filter_map(|(repo, to_archive)| {
                 (*to_archive != ArchiveState::Skip).then_some(repo)
             })
+    }
+
+    #[must_use]
+    pub fn get_repo_ids_to_review(&self) -> Vec<RepoId> {
+        self.get_repos_to_review().map(|r| r.id).collect()
     }
 
     #[must_use]
@@ -139,3 +157,30 @@ impl ArchiveStateMap {
 }
 
 pub type PageNumber = usize;
+
+#[derive(Default, Store, Eq, PartialEq, Clone)]
+pub struct PageRepoMap {
+    map: HashMap<PageNumber, Vec<RepoId>>
+}
+
+impl PageRepoMap {
+    #[must_use]
+    pub fn has_seen_page(&self, page_number: PageNumber) -> bool {
+        self.map.contains_key(&page_number)
+    }
+
+    #[must_use]
+    pub fn get_repo_ids(&self, page_number: PageNumber) -> Option<Vec<RepoId>> {
+        self.map.get(&page_number).cloned()
+    }
+
+    /// # Panics
+    ///
+    /// Will panic if `page_number` is already in the `PageRepoMap`. We
+    /// shouldn't add the same page more than once, so if it's already
+    /// there that indicates some kind of logical failure.
+    pub fn add_page(&mut self, page_number: PageNumber, repo_ids: Vec<RepoId>) {
+        assert!(!self.has_seen_page(page_number));
+        self.map.insert(page_number, repo_ids);
+    }
+}
