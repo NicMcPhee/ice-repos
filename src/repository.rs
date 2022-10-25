@@ -49,16 +49,18 @@ pub struct Organization {
 //   were archived in advance.
 /// The desired state for a given repository.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ArchiveState {
+pub enum DesiredState {
+    /// This repository was already archived and its state can't be change.
+    AlreadyArchived,
     /// We have chosen in the pagination view to _not_ archive this repository.
-    Skip,
+    Keep,
     /// We have chosen in the pagination view to archive this repository.
     Archive,
     /// We have changed from "to archive" to "don't archive" in the review view.
-    SkippedInReview
+    KeptInReview
 }
 
-impl ArchiveState {
+impl DesiredState {
     /// Convert a boolean, essentially the toggle state of a checkbox in the
     /// Paginator component and convert it into an `ArchiveState`. In the
     /// paginator, we want to use the `Skip` state to indicate that we do not
@@ -68,7 +70,7 @@ impl ArchiveState {
         if b {
             Self::Archive
         } else {
-            Self::Skip
+            Self::Keep
         }
     }
 
@@ -81,26 +83,29 @@ impl ArchiveState {
         if b {
             Self::Archive
         } else {
-            Self::SkippedInReview
+            Self::KeptInReview
         }
     }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Store)]
-pub struct ArchiveStateMap {
+pub struct StateMap {
     // Map from the repository ID as a key, to a pair
     // containing the Repository struct and a boolean
     // indicating whether we want to archive that repository
     // or not.
-    pub map: BTreeMap<RepoId, (Repository, ArchiveState)>
+    pub map: BTreeMap<RepoId, (Repository, DesiredState)>
 }
 
-impl ArchiveStateMap {
+impl StateMap {
     pub fn with_repos(&mut self, repositories: &[Repository]) -> &mut Self {
         for repo in repositories {
-            if !repo.archived {
-                self.map.entry(repo.id).or_insert((repo.clone(), ArchiveState::Archive));
-            }
+            let initial_state = if repo.archived {
+                DesiredState::AlreadyArchived
+            } else {
+                DesiredState::Archive
+            };
+            self.map.entry(repo.id).or_insert((repo.clone(), initial_state));
         }
         self
     }
@@ -109,12 +114,12 @@ impl ArchiveStateMap {
     pub fn get_desired_state(&self, id: RepoId) -> Option<bool> {
         self.map
             .get(&id)
-            .map(|(_, archive_state)| matches!(archive_state, ArchiveState::Archive))
+            .map(|(_, desired_state)| matches!(desired_state, DesiredState::Archive))
     }
 
-    pub fn update_desired_state(&mut self, id: RepoId, desired_archive_state: ArchiveState) -> &mut Self {
-        web_sys::console::log_1(&format!("Updating {id} to {desired_archive_state:?}").into());
-        self.map.entry(id).and_modify(|p| { p.1 = desired_archive_state });
+    pub fn update_desired_state(&mut self, id: RepoId, desired_state: DesiredState) -> &mut Self {
+        web_sys::console::log_1(&format!("Updating {id} to {desired_state:?}").into());
+        self.map.entry(id).and_modify(|p| { p.1 = desired_state });
         web_sys::console::log_1(&format!("The resulting map was {self:?}").into());
         self
     }
@@ -124,7 +129,7 @@ impl ArchiveStateMap {
     /// Will panic `repo_id` isn't in the `ArchiveStateMap`.    
     #[must_use]
     pub fn get_repo(&self, repo_id: RepoId) -> &Repository {
-        assert!(self.map.contains_key(&repo_id), "Repository key {repo_id} not found in ArchiveStateMap");
+        assert!(self.map.contains_key(&repo_id), "Repository key {repo_id} not found in StateMap");
         #[allow(clippy::unwrap_used)]
         self.map.get(&repo_id).map(|p| &p.0).unwrap()
     }
@@ -132,8 +137,9 @@ impl ArchiveStateMap {
     pub fn get_repos_to_review(&self) -> impl Iterator<Item = &Repository> {
         self.map
             .values()
-            .filter_map(|(repo, to_archive)| {
-                (*to_archive != ArchiveState::Skip).then_some(repo)
+            .filter_map(|(repo, desired_state)| {
+                (*desired_state != DesiredState::AlreadyArchived || *desired_state != DesiredState::Keep)
+                    .then_some(repo)
             })
     }
 
@@ -151,7 +157,7 @@ impl ArchiveStateMap {
         self.map
             .values()
             .filter_map(|(repo, to_archive)| {
-                (*to_archive == ArchiveState::Archive).then_some(repo)
+                (*to_archive == DesiredState::Archive).then_some(repo)
             })
     }
 }

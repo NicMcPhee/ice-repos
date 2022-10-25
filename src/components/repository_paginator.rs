@@ -10,7 +10,7 @@ use yew::prelude::*;
 use yewdux::prelude::{use_store, Dispatch};
 
 use crate::Route;
-use crate::repository::{Repository, DesiredArchiveState, Organization, ArchiveStateMap, ArchiveState, PageRepoMap, PageNumber};
+use crate::repository::{Repository, DesiredArchiveState, Organization, StateMap, DesiredState, PageRepoMap, PageNumber};
 use crate::components::repository_list::RepositoryList;
 
 #[derive(Debug, Clone)]
@@ -124,7 +124,7 @@ fn handle_parse_error(err: &LinkParseError) {
         &format!("There was an error parsing the link field in the HTTP response: {:?}", err).into());
 }
 
-fn update_state_for_organization(organization: Rc<Organization>, archive_state_dispatch: Dispatch<ArchiveStateMap>, page_map_dispatch: Dispatch<PageRepoMap>, current_page: PageNumber, state: UseStateHandle<State>) {
+fn update_state_for_organization(organization: Rc<Organization>, archive_state_dispatch: Dispatch<StateMap>, page_map_dispatch: Dispatch<PageRepoMap>, current_page: PageNumber, state: UseStateHandle<State>) {
     wasm_bindgen_futures::spawn_local(async move {
         assert!(organization.name.is_some());
         // This unwrap() should be safe because the `RepositoryPaginator` is only rendered in
@@ -189,10 +189,10 @@ fn update_state_for_organization(organization: Rc<Organization>, archive_state_d
 pub fn repository_paginator() -> Html {
     let (organization, _) = use_store::<Organization>();
     let (page_map, page_map_dispatch) = use_store::<PageRepoMap>();
-    let (archive_state_map, archive_state_dispatch) = use_store::<ArchiveStateMap>();
+    let (state_map, state_map_dispatch) = use_store::<StateMap>();
 
     web_sys::console::log_1(&format!("RepositoryPaginator called with organization {:?}.", organization.name).into());
-    web_sys::console::log_1(&format!("Current ArchiveStateMap is {:?}.", archive_state_map).into());
+    web_sys::console::log_1(&format!("Current StateMap is {:?}.", state_map).into());
 
     let repository_paginator_state = use_state(|| State {
         current_page: 1,
@@ -208,11 +208,11 @@ pub fn repository_paginator() -> Html {
     // to fix this along with switching to "Prev"/"Next" UI model.
     {
         let repository_paginator_state = repository_paginator_state.clone();
-        let archive_state_dispatch = archive_state_dispatch.clone();
+        let state_map_dispatch = state_map_dispatch.clone();
         use_effect_with_deps(
             move |(organization, current_page, _)| {
                 update_state_for_organization(organization.clone(), 
-                    archive_state_dispatch, 
+                    state_map_dispatch, 
                     page_map_dispatch,
                     *current_page, 
                     repository_paginator_state);
@@ -225,8 +225,8 @@ pub fn repository_paginator() -> Html {
     let on_checkbox_change: Callback<DesiredArchiveState> = {
         Callback::from(move |desired_archive_state| {
             let DesiredArchiveState { id, desired_archive_state } = desired_archive_state;
-            archive_state_dispatch.reduce_mut(|archive_state_map| {
-                archive_state_map.update_desired_state(id, ArchiveState::from_paginator_state(desired_archive_state));
+            state_map_dispatch.reduce_mut(|state_map| {
+                state_map.update_desired_state(id, DesiredState::from_paginator_state(desired_archive_state));
             });
         })
     };
