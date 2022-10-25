@@ -13,6 +13,12 @@ use crate::Route;
 use crate::repository::{Repository, DesiredArchiveState, Organization, StateMap, DesiredState, PageRepoMap, PageNumber};
 use crate::components::repository_list::RepositoryList;
 
+use super::organization_entry;
+
+#[derive(Debug, Clone, PartialEq, Properties)]
+pub struct Props {
+    pub organization: String
+}
 #[derive(Debug, Clone)]
 struct State {
     current_page: PageNumber,
@@ -124,14 +130,9 @@ fn handle_parse_error(err: &LinkParseError) {
         &format!("There was an error parsing the link field in the HTTP response: {:?}", err).into());
 }
 
-fn update_state_for_organization(organization: Rc<Organization>, archive_state_dispatch: Dispatch<StateMap>, page_map_dispatch: Dispatch<PageRepoMap>, current_page: PageNumber, state: UseStateHandle<State>) {
+fn update_state_for_organization(organization: &String, archive_state_dispatch: Dispatch<StateMap>, page_map_dispatch: Dispatch<PageRepoMap>, current_page: PageNumber, state: UseStateHandle<State>) {
+    let organization = organization.clone();
     wasm_bindgen_futures::spawn_local(async move {
-        assert!(organization.name.is_some());
-        // This unwrap() should be safe because the `RepositoryPaginator` is only rendered in
-        // `HomePage` if the organization is a `Some` variant.
-        #[allow(clippy::unwrap_used)]
-        let organization = organization.name.as_ref().unwrap();
-
         web_sys::console::log_1(&format!("spawn_local called with organization {organization}.").into());
         let request_url = format!("/orgs/{organization}/repos?sort=pushed&direction=asc&per_page={REPOS_PER_PAGE}&page={current_page}");
         let response = Request::get(&request_url).send().await.unwrap();
@@ -186,12 +187,12 @@ fn update_state_for_organization(organization: Rc<Organization>, archive_state_d
 // a struct component to help avoid some of the function call/return issues
 // in the error handling.
 #[function_component(RepositoryPaginator)]
-pub fn repository_paginator() -> Html {
-    let (organization, _) = use_store::<Organization>();
+pub fn repository_paginator(props: &Props) -> Html {
+    let Props { organization } = props;
     let (page_map, page_map_dispatch) = use_store::<PageRepoMap>();
     let (state_map, state_map_dispatch) = use_store::<StateMap>();
 
-    web_sys::console::log_1(&format!("RepositoryPaginator called with organization {:?}.", organization.name).into());
+    web_sys::console::log_1(&format!("RepositoryPaginator called with organization {:?}.", organization).into());
     web_sys::console::log_1(&format!("Current StateMap is {:?}.", state_map).into());
 
     let repository_paginator_state = use_state(|| State {
@@ -207,18 +208,19 @@ pub fn repository_paginator() -> Html {
     // `update_state_for_organization` if it has not been loaded yet. Might make sense
     // to fix this along with switching to "Prev"/"Next" UI model.
     {
+        let organization = organization.clone();
         let repository_paginator_state = repository_paginator_state.clone();
         let state_map_dispatch = state_map_dispatch.clone();
         use_effect_with_deps(
-            move |(organization, current_page, _)| {
-                update_state_for_organization(organization.clone(), 
+            move |(current_page, _)| {
+                update_state_for_organization(&organization.clone(), 
                     state_map_dispatch, 
                     page_map_dispatch,
                     *current_page, 
                     repository_paginator_state);
                 || ()
             }, 
-            (organization, current_page, loaded)
+            (current_page, loaded)
         );
     }
     

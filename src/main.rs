@@ -65,7 +65,7 @@ fn home_page() -> Html {
             if let Some(organization) = organization {
                 <div>
                     <h2 class="text-2xl">{ format!("The list of repositories for the organization {}", organization) }</h2>
-                    <RepositoryPaginator/>
+                    <RepositoryPaginator organization={ organization.clone() } />
                 </div>
             }
 

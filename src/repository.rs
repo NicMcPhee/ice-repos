@@ -35,6 +35,10 @@ pub struct DesiredArchiveState {
     pub desired_archive_state: bool
 }
 
+// TODO: I think we may want to ultimately get rid of
+//   this struct. It's not needed in the Paginator anymore,
+//   and we may not need it in the `OrganizationEntry` component,
+//   but I'm not 100% about that. 
 // TODO: Can we use `AttrValue` instead of `String` here?
 // `AttrValue` is supposed to be more efficient
 // because cloning `String`s can be expensive.
