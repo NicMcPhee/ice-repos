@@ -13,7 +13,7 @@ use crate::repository::{Repository, DesiredArchiveState, StateMap, DesiredState}
 use crate::page_repo_map::{PageRepoMap, PageNumber};
 use crate::components::repository_list::RepositoryList;
 
-#[derive(Debug, Clone, PartialEq, Properties)]
+#[derive(Debug, Clone, PartialEq, Eq, Properties)]
 pub struct Props {
     pub organization: String
 }
@@ -128,8 +128,8 @@ fn handle_parse_error(err: &LinkParseError) {
         &format!("There was an error parsing the link field in the HTTP response: {:?}", err).into());
 }
 
-fn update_state_for_organization(organization: &String, archive_state_dispatch: Dispatch<StateMap>, page_map_dispatch: Dispatch<PageRepoMap>, current_page: PageNumber, state: UseStateHandle<State>) {
-    let organization = organization.clone();
+fn update_state_for_organization(organization: &str, archive_state_dispatch: Dispatch<StateMap>, page_map_dispatch: Dispatch<PageRepoMap>, current_page: PageNumber, state: UseStateHandle<State>) {
+    let organization = organization.to_owned();
     wasm_bindgen_futures::spawn_local(async move {
         web_sys::console::log_1(&format!("spawn_local called with organization {organization}.").into());
         let request_url = format!("/orgs/{organization}/repos?sort=pushed&direction=asc&per_page={REPOS_PER_PAGE}&page={current_page}");
