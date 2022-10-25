@@ -1,5 +1,4 @@
 use std::num::ParseIntError;
-use std::rc::Rc;
 
 use url::{Url, ParseError};
 
@@ -10,10 +9,9 @@ use yew::prelude::*;
 use yewdux::prelude::{use_store, Dispatch};
 
 use crate::Route;
-use crate::repository::{Repository, DesiredArchiveState, Organization, StateMap, DesiredState, PageRepoMap, PageNumber};
+use crate::repository::{Repository, DesiredArchiveState, StateMap, DesiredState};
+use crate::page_repo_map::{PageRepoMap, PageNumber};
 use crate::components::repository_list::RepositoryList;
-
-use super::organization_entry;
 
 #[derive(Debug, Clone, PartialEq, Properties)]
 pub struct Props {
@@ -189,7 +187,12 @@ fn update_state_for_organization(organization: &String, archive_state_dispatch: 
 #[function_component(RepositoryPaginator)]
 pub fn repository_paginator(props: &Props) -> Html {
     let Props { organization } = props;
+    // TODO: Change this from being a Yewdux global to being "internal" state for the
+    //   paginator component. 
     let (page_map, page_map_dispatch) = use_store::<PageRepoMap>();
+    // TODO: Change this from being a Yewdux global to being either "internal" state for
+    //   the paginator, or use Yew's context tools to share this with the review and submit
+    //   component.
     let (state_map, state_map_dispatch) = use_store::<StateMap>();
 
     web_sys::console::log_1(&format!("RepositoryPaginator called with organization {:?}.", organization).into());
