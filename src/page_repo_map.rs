@@ -19,7 +19,7 @@ impl PageRepoMap {
     }
 
     #[must_use]
-    pub fn has_seen_page(&self, page_number: PageNumber) -> bool {
+    pub fn has_loaded_page(&self, page_number: PageNumber) -> bool {
         self.map.contains_key(&page_number)
     }
 
@@ -34,7 +34,7 @@ impl PageRepoMap {
     /// shouldn't add the same page more than once, so if it's already
     /// there that indicates some kind of logical failure.
     pub fn add_page(&mut self, page_number: PageNumber, repo_ids: Vec<RepoId>) {
-        assert!(!self.has_seen_page(page_number));
+        assert!(!self.has_loaded_page(page_number));
         self.map.insert(page_number, repo_ids);
     }
 }
