@@ -6,7 +6,7 @@ use crate::repository::RepoId;
 
 pub type PageNumber = usize;
 
-#[derive(Default, Store, Eq, PartialEq, Clone)]
+#[derive(Default, Debug, Store, Eq, PartialEq, Clone)]
 pub struct PageRepoMap {
     map: HashMap<PageNumber, Vec<RepoId>>
 }
