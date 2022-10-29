@@ -22,8 +22,7 @@ pub struct Props {
 #[derive(Debug, Clone)]
 struct State {
     current_page: PageNumber,
-    last_page: PageNumber,
-    loaded: bool,
+    last_page: PageNumber
 }
 
 #[derive(Debug)]
@@ -100,12 +99,11 @@ fn next_button_class(loaded: bool) -> String {
     class
 }
 
-fn make_button_callback(page_number: PageNumber, page_loaded: bool, repository_paginator_state: UseStateHandle<State>) -> Callback<MouseEvent> {
+fn make_button_callback(page_number: PageNumber, repository_paginator_state: UseStateHandle<State>) -> Callback<MouseEvent> {
     Callback::from(move |_| {
         let repo_state = State {
             current_page: page_number,
-            last_page: repository_paginator_state.last_page,
-            loaded: page_loaded,
+            last_page: repository_paginator_state.last_page
         };
         web_sys::console::log_1(&format!("make_button_callback called with page number {page_number}.").into());
         web_sys::console::log_1(&format!("New state is {repo_state:?}.").into());
@@ -129,8 +127,9 @@ fn handle_parse_error(err: &LinkParseError) {
         &format!("There was an error parsing the link field in the HTTP response: {:?}", err).into());
 }
 
-fn update_state_for_organization(organization: &str, archive_state_dispatch: Dispatch<DesiredStateMap>, page_map: UseStateHandle<PageRepoMap>, current_page: PageNumber, state: UseStateHandle<State>) {
+fn load_new_page(organization: &str, desired_state_map_dispatch: Dispatch<DesiredStateMap>, page_map: UseStateHandle<PageRepoMap>, current_page: PageNumber, state: UseStateHandle<State>) {
     let organization = organization.to_owned();
+    // TODO: Possibly change `spawn_local` to `use_async`.
     wasm_bindgen_futures::spawn_local(async move {
         web_sys::console::log_1(&format!("spawn_local called with organization {organization}.").into());
         let request_url = format!("/orgs/{organization}/repos?sort=pushed&direction=asc&per_page={REPOS_PER_PAGE}&page={current_page}");
@@ -152,8 +151,8 @@ fn update_state_for_organization(organization: &str, archive_state_dispatch: Dis
         // size of the JSON package and the cost of the parsing.
         let repos_result: Vec<Repository> = response.json().await.unwrap();
         
-        archive_state_dispatch.reduce_mut(|archive_state_map| {
-            archive_state_map.with_repos(&repos_result);
+        desired_state_map_dispatch.reduce_mut(|desired_state_map| {
+            desired_state_map.with_repos(&repos_result);
         });
 
         let mut new_page_map 
@@ -168,8 +167,7 @@ fn update_state_for_organization(organization: &str, archive_state_dispatch: Dis
 
         let repo_state = State {
             current_page,
-            last_page,
-            loaded: true,
+            last_page
         };
         web_sys::console::log_1(&format!("The new repo state is <{repo_state:?}>.").into());
         state.set(repo_state);
@@ -215,33 +213,36 @@ pub fn repository_paginator(props: &Props) -> Html {
 
     let repository_paginator_state = use_state(|| State {
         current_page: 1,
-        last_page: 0, // This is "wrong" and needs to be set after we've gotten our response.
-        // TODO: This duplicates information that's now in the PageRepoMap, so maybe
-        //   we want to remove it from the paginator state?
-        loaded: false,
+        last_page: 0
     });
 
-    let State { current_page, last_page, loaded }
+    let State { current_page, last_page }
         = (*repository_paginator_state).clone();
 
     // TODO: We want to see if the current page has already been loaded, and only do
     // `update_state_for_organization` if it has not been loaded yet. Might make sense
     // to fix this along with switching to "Prev"/"Next" UI model.
+    // TODO: It's possible that this would all be easier if we used a structural component
+    //   here with messages for the various updates instead of having multiple `use_effect_with_deps`
+    //   calls.
     {
         let organization = organization.clone();
         let page_map = page_map.clone();
         let repository_paginator_state = repository_paginator_state.clone();
-        let state_map_dispatch = desired_state_map_dispatch.clone();
+        let desired_state_map_dispatch = desired_state_map_dispatch.clone();
         use_effect_with_deps(
-            move |(current_page, _)| {
-                update_state_for_organization(&organization.clone(), 
-                    state_map_dispatch, 
+            move |current_page| {
+                let current_page = *current_page;
+                if !page_map.has_loaded_page(current_page) {
+                    load_new_page(&organization.clone(), 
+                    desired_state_map_dispatch, 
                     page_map,
-                    *current_page, 
+                    current_page, 
                     repository_paginator_state);
+                }
                 || ()
             }, 
-            (current_page, loaded)
+            current_page
         );
     }
     
@@ -256,12 +257,12 @@ pub fn repository_paginator(props: &Props) -> Html {
 
     let prev: Callback<MouseEvent> = {
         // assert!(current_page > 1);
-        make_button_callback(current_page-1, page_map.has_seen_page(current_page-1), repository_paginator_state.clone())
+        make_button_callback(current_page-1, repository_paginator_state.clone())
     };
 
     let next_or_review: Callback<MouseEvent> = {
         if current_page < last_page {
-            make_button_callback(current_page+1, page_map.has_seen_page(current_page+1), repository_paginator_state)
+            make_button_callback(current_page+1, repository_paginator_state)
         } else {
             let history = use_history().unwrap();
             Callback::from(move |_: MouseEvent| history.push(Route::ReviewAndSubmit))
@@ -280,7 +281,7 @@ pub fn repository_paginator(props: &Props) -> Html {
                 <button class="btn btn-active" disabled=true>
                     { format!("{}/{}", current_page, last_page) }
                 </button>
-                <button class={ next_button_class(loaded) } onclick={next_or_review}>
+                <button class={ next_button_class(page_map.has_loaded_page(current_page)) } onclick={next_or_review}>
                     { if current_page == last_page { "Review & Submit" } else { "Next" } }
                 </button>
             </div>
