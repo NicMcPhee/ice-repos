@@ -3,6 +3,8 @@ use std::ops::Deref;
 
 use url::{Url, ParseError};
 
+use gloo::console::log;
+
 use reqwasm::http::{Request};
 
 use yew_router::prelude::*;
@@ -192,15 +194,34 @@ pub fn repository_paginator(props: &Props) -> Html {
     let Props { organization } = props;
     let page_map = use_state(|| PageRepoMap::new());
 
+    let repository_paginator_state = use_state(|| State {
+        current_page: 1,
+        last_page: 0
+    });
+    // TODO: I feel like these should actually be two separate state objects. Instead
+    //   of having one big state object, it's probably better to separate out the state
+    //   elements so they can be handled separately.
+    // TODO: In doing this separation, we should change `last_page` to be `Option<usize>`
+    //   so we'd have a clean way of distinguishing between when it's been set and when
+    //   it hasn't.
+    let State { current_page, last_page }
+        = (*repository_paginator_state).clone();
+
+    log!(format!("In paginator with page_map {page_map:?}."));
+
     // TODO: Change this from being a Yewdux global to being either "internal" state for
     //   the paginator, or use Yew's context tools to share this with the review and submit
     //   component.
     let (desired_state_map, desired_state_map_dispatch) = use_store::<DesiredStateMap>();
     {
+        let repository_paginator_state = repository_paginator_state.clone();
+        let page_map = page_map.clone();
         let organization = organization.clone();
         let desired_state_map_dispatch = desired_state_map_dispatch.clone();
         use_effect_with_deps(
             move |_| {
+                repository_paginator_state.set(State { current_page: 1, last_page: 0 });
+                page_map.set(PageRepoMap::new());
                 desired_state_map_dispatch.set(DesiredStateMap::new());
                 || ()
             },
@@ -210,14 +231,6 @@ pub fn repository_paginator(props: &Props) -> Html {
 
     web_sys::console::log_1(&format!("RepositoryPaginator called with organization {:?}.", organization).into());
     web_sys::console::log_1(&format!("Current StateMap is {:?}.", desired_state_map).into());
-
-    let repository_paginator_state = use_state(|| State {
-        current_page: 1,
-        last_page: 0
-    });
-
-    let State { current_page, last_page }
-        = (*repository_paginator_state).clone();
 
     // TODO: We want to see if the current page has already been loaded, and only do
     // `update_state_for_organization` if it has not been loaded yet. Might make sense
@@ -231,18 +244,20 @@ pub fn repository_paginator(props: &Props) -> Html {
         let repository_paginator_state = repository_paginator_state.clone();
         let desired_state_map_dispatch = desired_state_map_dispatch.clone();
         use_effect_with_deps(
-            move |current_page| {
+            move |(page_map, current_page)| {
+                log!(format!("Organization = {organization} and current page = {current_page}."));
+                log!(format!("Current page has loaded = {}", page_map.has_loaded_page(*current_page)));
                 let current_page = *current_page;
                 if !page_map.has_loaded_page(current_page) {
                     load_new_page(&organization.clone(), 
-                    desired_state_map_dispatch, 
-                    page_map,
-                    current_page, 
-                    repository_paginator_state);
+                        desired_state_map_dispatch, 
+                        page_map.clone(),
+                        current_page, 
+                        repository_paginator_state);
                 }
                 || ()
             }, 
-            current_page
+            (page_map, current_page)
         );
     }
     
