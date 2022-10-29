@@ -1,4 +1,5 @@
 use std::num::ParseIntError;
+use std::ops::Deref;
 
 use url::{Url, ParseError};
 
@@ -7,9 +8,10 @@ use reqwasm::http::{Request};
 use yew_router::prelude::*;
 use yew::prelude::*;
 use yewdux::prelude::{use_store, Dispatch};
+use yewdux::store::Store;
 
 use crate::Route;
-use crate::repository::{Repository, DesiredArchiveState, StateMap, DesiredState};
+use crate::repository::{Repository, DesiredArchiveState, DesiredStateMap, DesiredState};
 use crate::page_repo_map::{PageRepoMap, PageNumber};
 use crate::components::repository_list::RepositoryList;
 
@@ -98,13 +100,12 @@ fn next_button_class(loaded: bool) -> String {
     class
 }
 
-fn make_button_callback(page_number: PageNumber, repository_paginator_state: UseStateHandle<State>, page_map: &PageRepoMap) -> Callback<MouseEvent> {
-    let loaded = page_map.has_seen_page(page_number);
+fn make_button_callback(page_number: PageNumber, page_loaded: bool, repository_paginator_state: UseStateHandle<State>) -> Callback<MouseEvent> {
     Callback::from(move |_| {
         let repo_state = State {
             current_page: page_number,
             last_page: repository_paginator_state.last_page,
-            loaded,
+            loaded: page_loaded,
         };
         web_sys::console::log_1(&format!("make_button_callback called with page number {page_number}.").into());
         web_sys::console::log_1(&format!("New state is {repo_state:?}.").into());
@@ -128,7 +129,7 @@ fn handle_parse_error(err: &LinkParseError) {
         &format!("There was an error parsing the link field in the HTTP response: {:?}", err).into());
 }
 
-fn update_state_for_organization(organization: &str, archive_state_dispatch: Dispatch<StateMap>, page_map_dispatch: Dispatch<PageRepoMap>, current_page: PageNumber, state: UseStateHandle<State>) {
+fn update_state_for_organization(organization: &str, archive_state_dispatch: Dispatch<DesiredStateMap>, page_map: UseStateHandle<PageRepoMap>, current_page: PageNumber, state: UseStateHandle<State>) {
     let organization = organization.to_owned();
     wasm_bindgen_futures::spawn_local(async move {
         web_sys::console::log_1(&format!("spawn_local called with organization {organization}.").into());
@@ -155,11 +156,15 @@ fn update_state_for_organization(organization: &str, archive_state_dispatch: Dis
             archive_state_map.with_repos(&repos_result);
         });
 
-        page_map_dispatch.reduce_mut(|page_map| {
-            page_map.add_page(
-                current_page, 
-                repos_result.iter().map(|r| r.id).collect());
-        });
+        let mut new_page_map 
+            = page_map
+                .deref()
+                .clone();
+        new_page_map.add_page(
+            current_page,
+            repos_result.iter().map(|r| r.id).collect()
+        );
+        page_map.set(new_page_map);
 
         let repo_state = State {
             current_page,
@@ -187,20 +192,32 @@ fn update_state_for_organization(organization: &str, archive_state_dispatch: Dis
 #[function_component(RepositoryPaginator)]
 pub fn repository_paginator(props: &Props) -> Html {
     let Props { organization } = props;
-    // TODO: Change this from being a Yewdux global to being "internal" state for the
-    //   paginator component. 
-    let (page_map, page_map_dispatch) = use_store::<PageRepoMap>();
+    let page_map = use_state(|| PageRepoMap::new());
+
     // TODO: Change this from being a Yewdux global to being either "internal" state for
     //   the paginator, or use Yew's context tools to share this with the review and submit
     //   component.
-    let (state_map, state_map_dispatch) = use_store::<StateMap>();
+    let (desired_state_map, desired_state_map_dispatch) = use_store::<DesiredStateMap>();
+    {
+        let organization = organization.clone();
+        let desired_state_map_dispatch = desired_state_map_dispatch.clone();
+        use_effect_with_deps(
+            move |_| {
+                desired_state_map_dispatch.set(DesiredStateMap::new());
+                || ()
+            },
+            organization
+        )
+    }
 
     web_sys::console::log_1(&format!("RepositoryPaginator called with organization {:?}.", organization).into());
-    web_sys::console::log_1(&format!("Current StateMap is {:?}.", state_map).into());
+    web_sys::console::log_1(&format!("Current StateMap is {:?}.", desired_state_map).into());
 
     let repository_paginator_state = use_state(|| State {
         current_page: 1,
         last_page: 0, // This is "wrong" and needs to be set after we've gotten our response.
+        // TODO: This duplicates information that's now in the PageRepoMap, so maybe
+        //   we want to remove it from the paginator state?
         loaded: false,
     });
 
@@ -212,13 +229,14 @@ pub fn repository_paginator(props: &Props) -> Html {
     // to fix this along with switching to "Prev"/"Next" UI model.
     {
         let organization = organization.clone();
+        let page_map = page_map.clone();
         let repository_paginator_state = repository_paginator_state.clone();
-        let state_map_dispatch = state_map_dispatch.clone();
+        let state_map_dispatch = desired_state_map_dispatch.clone();
         use_effect_with_deps(
             move |(current_page, _)| {
                 update_state_for_organization(&organization.clone(), 
                     state_map_dispatch, 
-                    page_map_dispatch,
+                    page_map,
                     *current_page, 
                     repository_paginator_state);
                 || ()
@@ -230,7 +248,7 @@ pub fn repository_paginator(props: &Props) -> Html {
     let on_checkbox_change: Callback<DesiredArchiveState> = {
         Callback::from(move |desired_archive_state| {
             let DesiredArchiveState { id, desired_archive_state } = desired_archive_state;
-            state_map_dispatch.reduce_mut(|state_map| {
+            desired_state_map_dispatch.reduce_mut(|state_map| {
                 state_map.update_desired_state(id, DesiredState::from_paginator_state(desired_archive_state));
             });
         })
@@ -238,12 +256,12 @@ pub fn repository_paginator(props: &Props) -> Html {
 
     let prev: Callback<MouseEvent> = {
         // assert!(current_page > 1);
-        make_button_callback(current_page-1, repository_paginator_state.clone(), &page_map)
+        make_button_callback(current_page-1, page_map.has_seen_page(current_page-1), repository_paginator_state.clone())
     };
 
     let next_or_review: Callback<MouseEvent> = {
         if current_page < last_page {
-            make_button_callback(current_page+1, repository_paginator_state, &page_map)
+            make_button_callback(current_page+1, page_map.has_seen_page(current_page+1), repository_paginator_state)
         } else {
             let history = use_history().unwrap();
             Callback::from(move |_: MouseEvent| history.push(Route::ReviewAndSubmit))
