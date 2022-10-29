@@ -93,7 +93,7 @@ impl DesiredState {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Store)]
-pub struct StateMap {
+pub struct DesiredStateMap {
     // Map from the repository ID as a key, to a pair
     // containing the Repository struct and a boolean
     // indicating whether we want to archive that repository
@@ -101,7 +101,7 @@ pub struct StateMap {
     pub map: BTreeMap<RepoId, (Repository, DesiredState)>
 }
 
-impl StateMap {
+impl DesiredStateMap {
     pub fn with_repos(&mut self, repositories: &[Repository]) -> &mut Self {
         for repo in repositories {
             let initial_state = if repo.archived {

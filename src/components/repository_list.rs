@@ -2,7 +2,7 @@ use gloo::console::log;
 use yew::prelude::*;
 use yewdux::prelude::use_store;
 
-use crate::repository::{RepoId, DesiredArchiveState, StateMap};
+use crate::repository::{RepoId, DesiredArchiveState, DesiredStateMap};
 use crate::components::repository_card::RepositoryCard;
 
 // TODO: Can we use `AttrValue` instead of `String` here?
@@ -22,7 +22,7 @@ pub fn repository_list(props: &Props) -> Html {
                 empty_repo_list_message, 
                 on_checkbox_change } = props;
 
-    let (state_map, _) = use_store::<StateMap>();
+    let (state_map, _) = use_store::<DesiredStateMap>();
 
     log!(format!("We're in repo list with repo IDs {repo_ids:?}"));
     log!(format!("We're in repo list with ArchiveStateMap {state_map:?}"));

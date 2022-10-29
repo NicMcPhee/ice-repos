@@ -2,7 +2,7 @@ use web_sys::MouseEvent;
 use yew::{function_component, html, Callback};
 use yewdux::prelude::use_store;
 
-use crate::repository::{StateMap, DesiredArchiveState, DesiredState};
+use crate::repository::{DesiredStateMap, DesiredArchiveState, DesiredState};
 use crate::components::repository_list::RepositoryList;
 use crate::services::archive_repos::archive_repositories;
 
@@ -11,7 +11,7 @@ use crate::services::archive_repos::archive_repositories;
 #[function_component(ReviewAndSubmit)]
 pub fn review_and_submit() -> Html {
     let (archive_state_map, archive_state_dispatch) 
-        = use_store::<StateMap>();
+        = use_store::<DesiredStateMap>();
 
     let on_checkbox_change: Callback<DesiredArchiveState> = {
         Callback::from(move |desired_archive_state| {
