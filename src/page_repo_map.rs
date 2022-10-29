@@ -12,6 +12,12 @@ pub struct PageRepoMap {
 }
 
 impl PageRepoMap {
+    pub fn new() -> Self {
+        Self {
+            map: HashMap::new()
+        }
+    }
+
     #[must_use]
     pub fn has_seen_page(&self, page_number: PageNumber) -> bool {
         self.map.contains_key(&page_number)
