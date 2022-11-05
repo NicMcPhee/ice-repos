@@ -4,6 +4,8 @@
 #![warn(clippy::expect_used)]
 
 use yew::prelude::*;
+use yew_oauth2::prelude::*;
+use yew_oauth2::oauth2::*; // use `openid::*` when using OpenID connect
 use yew_router::prelude::*;
 
 use yewdux::prelude::*;
@@ -81,17 +83,51 @@ fn home_page() -> Html {
 /// main root
 #[function_component(App)]
 fn app() -> Html {
-    html! {
-        // ********************************************************
-        // **    basename is not supported on yew 0.19.0 yet.    **
-        // <BrowserRouter basename="/ice-repos/">
-        //     <Switch<Route> render={Switch::render(switch)} />
-        // </BrowserRouter>
-        // ********************************************************
-        <BrowserRouter>
-            <Switch<RootRoute> render={Switch::render(root_route)} />
-        </BrowserRouter>
+    let login = Callback::from(|_: MouseEvent| {
+        OAuth2Dispatcher::<Client>::new().start_login();
+    });
+    let logout = Callback::from(|_: MouseEvent| {
+            OAuth2Dispatcher::<Client>::new().logout();
+    });
+
+    let config = Config {
+        client_id: "c5b735f256dadf835133".into(),
+        auth_url: "https://github.com/login/oauth/authorize".into(),
+        token_url: "http://0.0.0.0:8787/finalize_login".into(),
+    };
+
+    return html! {
+        <OAuth2 {config}>
+            <Failure><FailureMessage/></Failure>
+            <Authenticated>
+                <p> <button onclick={logout}>{ "Logout" }</button> </p>
+                <h1>{"Authenticated!"}</h1>
+                <BrowserRouter>
+                    <Switch<RootRoute> render={Switch::render(root_route)}/>
+                </BrowserRouter>
+            </Authenticated>
+            <NotAuthenticated>
+                <p> 
+                    { "You need to log in" }
+                </p>
+                <p>
+                    <button onclick={login.clone()}>{ "Login" }</button> 
+                </p>
+            </NotAuthenticated>
+        </OAuth2>
     }
+
+    // html! {
+    //     // ********************************************************
+    //     // **    basename is not supported on yew 0.19.0 yet.    **
+    //     // <BrowserRouter basename="/ice-repos/">
+    //     //     <Switch<Route> render={Switch::render(switch)} />
+    //     // </BrowserRouter>
+    //     // ********************************************************
+    //     <BrowserRouter>
+    //         <Switch<RootRoute> render={Switch::render(root_route)} />
+    //     </BrowserRouter>
+    // }
 }
 
 /// entry point
