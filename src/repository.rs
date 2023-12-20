@@ -25,27 +25,26 @@ pub struct Repository {
     pub archived: bool,
     pub updated_at: DateTime<Local>,
     pub pushed_at: DateTime<Local>,
-
     // #[serde(flatten)]
     // extras: HashMap<String, Value>,
 }
 
 pub struct DesiredArchiveState {
     pub id: RepoId,
-    pub desired_archive_state: bool
+    pub desired_archive_state: bool,
 }
 
 // TODO: I think we may want to ultimately get rid of
 //   this struct. It's not needed in the Paginator anymore,
 //   and we may not need it in the `OrganizationEntry` component,
-//   but I'm not 100% about that. 
+//   but I'm not 100% about that.
 // TODO: Can we use `AttrValue` instead of `String` here?
 // `AttrValue` is supposed to be more efficient
 // because cloning `String`s can be expensive.
 // https://yew.rs/docs/concepts/components/properties#memoryspeed-overhead-of-using-properties
 #[derive(Debug, Default, Clone, PartialEq, Eq, Store)]
 pub struct Organization {
-    pub name: Option<String>
+    pub name: Option<String>,
 }
 
 // TODO: Add an `AlreadyArchived` option here and keep all the
@@ -61,7 +60,7 @@ pub enum DesiredState {
     /// We have chosen in the pagination view to archive this repository.
     Archive,
     /// We have changed from "to archive" to "don't archive" in the review view.
-    KeptInReview
+    KeptInReview,
 }
 
 impl DesiredState {
@@ -98,7 +97,7 @@ pub struct DesiredStateMap {
     // containing the Repository struct and a boolean
     // indicating whether we want to archive that repository
     // or not.
-    pub map: BTreeMap<RepoId, (Repository, DesiredState)>
+    pub map: BTreeMap<RepoId, (Repository, DesiredState)>,
 }
 
 impl DesiredStateMap {
@@ -109,7 +108,9 @@ impl DesiredStateMap {
             } else {
                 DesiredState::Archive
             };
-            self.map.entry(repo.id).or_insert((repo.clone(), initial_state));
+            self.map
+                .entry(repo.id)
+                .or_insert((repo.clone(), initial_state));
         }
         self
     }
@@ -123,7 +124,7 @@ impl DesiredStateMap {
 
     pub fn update_desired_state(&mut self, id: RepoId, desired_state: DesiredState) -> &mut Self {
         web_sys::console::log_1(&format!("Updating {id} to {desired_state:?}").into());
-        self.map.entry(id).and_modify(|p| { p.1 = desired_state });
+        self.map.entry(id).and_modify(|p| p.1 = desired_state);
         web_sys::console::log_1(&format!("The resulting map was {self:?}").into());
         self
     }
@@ -133,18 +134,20 @@ impl DesiredStateMap {
     /// Will panic `repo_id` isn't in the `ArchiveStateMap`.    
     #[must_use]
     pub fn get_repo(&self, repo_id: RepoId) -> &Repository {
-        assert!(self.map.contains_key(&repo_id), "Repository key {repo_id} not found in StateMap");
+        assert!(
+            self.map.contains_key(&repo_id),
+            "Repository key {repo_id} not found in StateMap"
+        );
         #[allow(clippy::unwrap_used)]
         self.map.get(&repo_id).map(|p| &p.0).unwrap()
     }
 
     pub fn get_repos_to_review(&self) -> impl Iterator<Item = &Repository> {
-        self.map
-            .values()
-            .filter_map(|(repo, desired_state)| {
-                (*desired_state != DesiredState::AlreadyArchived || *desired_state != DesiredState::Keep)
-                    .then_some(repo)
-            })
+        self.map.values().filter_map(|(repo, desired_state)| {
+            (*desired_state != DesiredState::AlreadyArchived
+                || *desired_state != DesiredState::Keep)
+                .then_some(repo)
+        })
     }
 
     #[must_use]
@@ -160,8 +163,6 @@ impl DesiredStateMap {
     pub fn get_repos_to_archive(&self) -> impl Iterator<Item = &Repository> {
         self.map
             .values()
-            .filter_map(|(repo, to_archive)| {
-                (*to_archive == DesiredState::Archive).then_some(repo)
-            })
+            .filter_map(|(repo, to_archive)| (*to_archive == DesiredState::Archive).then_some(repo))
     }
 }

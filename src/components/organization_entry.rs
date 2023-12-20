@@ -33,7 +33,9 @@ pub fn organization_entry() -> Html {
         let field_contents = field_contents.clone();
         Callback::from(move |_| {
             if !field_contents.is_empty() {
-                dispatch.set(Organization { name: Some(field_contents.deref().clone()) });
+                dispatch.set(Organization {
+                    name: Some(field_contents.deref().clone()),
+                });
             }
         })
     };

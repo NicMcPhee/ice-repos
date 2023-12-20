@@ -6,10 +6,10 @@
 
 use yew_router::Routable;
 
-pub mod services;
 pub mod components;
-pub mod repository;
 pub mod page_repo_map;
+pub mod repository;
+pub mod services;
 
 #[derive(Clone, Routable, PartialEq, Eq)]
 pub enum Route {

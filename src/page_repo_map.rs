@@ -8,13 +8,13 @@ pub type PageNumber = usize;
 
 #[derive(Default, Debug, Store, Eq, PartialEq, Clone)]
 pub struct PageRepoMap {
-    map: HashMap<PageNumber, Vec<RepoId>>
+    map: HashMap<PageNumber, Vec<RepoId>>,
 }
 
 impl PageRepoMap {
     pub fn new() -> Self {
         Self {
-            map: HashMap::new()
+            map: HashMap::new(),
         }
     }
 

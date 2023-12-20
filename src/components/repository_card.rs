@@ -1,8 +1,8 @@
-use wasm_bindgen::{UnwrapThrowExt, JsCast};
+use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use crate::repository::{Repository, DesiredArchiveState};
+use crate::repository::{DesiredArchiveState, Repository};
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
@@ -14,13 +14,16 @@ pub struct Props {
     // If it's a Some variant, then the enclosed boolean should indicate the desired
     // state for this repository.
     pub desired_archive_state: Option<bool>,
-    pub on_checkbox_change: Callback<DesiredArchiveState>
+    pub on_checkbox_change: Callback<DesiredArchiveState>,
 }
 
 #[function_component(RepositoryCard)]
 pub fn repository_card(props: &Props) -> Html {
-    let Props { repository, desired_archive_state, on_checkbox_change } 
-            = props;
+    let Props {
+        repository,
+        desired_archive_state,
+        on_checkbox_change,
+    } = props;
 
     // If we pass this assertion, then the desired_archive_state.unwrap() in the HTML
     // should be safe.
@@ -37,11 +40,13 @@ pub fn repository_card(props: &Props) -> Html {
             let target: HtmlInputElement = event_target.dyn_into().unwrap_throw();
             let desired_archive_state = target.checked();
 
-            web_sys::console::log_1(&format!("In ME callback desired state is {desired_archive_state}.").into());
+            web_sys::console::log_1(
+                &format!("In ME callback desired state is {desired_archive_state}.").into(),
+            );
 
             on_checkbox_change.emit(DesiredArchiveState {
                 id,
-                desired_archive_state
+                desired_archive_state,
             });
         })
     };
@@ -55,10 +60,10 @@ pub fn repository_card(props: &Props) -> Html {
                     <div class="card-actions">
                         <div class="form-control">
                             <label class="label cursor-pointer">
-                                <input type="checkbox" 
-                                       checked={ #[allow(clippy::unwrap_used)] desired_archive_state.unwrap() } 
+                                <input type="checkbox"
+                                       checked={ #[allow(clippy::unwrap_used)] desired_archive_state.unwrap() }
                                        class="checkbox" {onclick} />
-                                <p class="label-text italic ml-2">{ "Archive this repository" }</p> 
+                                <p class="label-text italic ml-2">{ "Archive this repository" }</p>
                             </label>
                         </div>
                     </div>

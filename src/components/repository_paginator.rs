@@ -1,37 +1,37 @@
 use std::num::ParseIntError;
 use std::ops::Deref;
 
-use url::{Url, ParseError};
+use url::{ParseError, Url};
 
 use gloo::console::log;
 
-use reqwasm::http::{Request};
+use reqwasm::http::Request;
 
-use yew_router::prelude::*;
 use yew::prelude::*;
+use yew_router::prelude::*;
 use yewdux::prelude::{use_store, Dispatch};
 use yewdux::store::Store;
 
-use crate::Route;
-use crate::repository::{Repository, DesiredArchiveState, DesiredStateMap, DesiredState};
-use crate::page_repo_map::{PageRepoMap, PageNumber};
 use crate::components::repository_list::RepositoryList;
+use crate::page_repo_map::{PageNumber, PageRepoMap};
+use crate::repository::{DesiredArchiveState, DesiredState, DesiredStateMap, Repository};
+use crate::Route;
 
 #[derive(Debug, Clone, PartialEq, Eq, Properties)]
 pub struct Props {
-    pub organization: String
+    pub organization: String,
 }
 #[derive(Debug, Clone)]
 struct State {
     current_page: PageNumber,
-    last_page: PageNumber
+    last_page: PageNumber,
 }
 
 #[derive(Debug)]
 enum LinkParseError {
     InvalidUrl(ParseError),
     PageEntryMissing(Url),
-    InvalidPageNumber(ParseIntError)
+    InvalidPageNumber(ParseIntError),
 }
 
 impl From<ParseError> for LinkParseError {
@@ -49,9 +49,9 @@ impl From<ParseIntError> for LinkParseError {
 /*
  * This parses the `last` component of the link field in the response header from
  * GitHub, which tells us how many pages there are.
- * 
+ *
  * The link field looks like:
- * 
+ *
  * <https://api.github.com/organizations/18425666/repos?page=1&per_page=5>; rel="prev", <https://api.github.com/organizations/18425666/repos?page=3&per_page=5>; rel="next", <https://api.github.com/organizations/18425666/repos?page=5&per_page=5>; rel="last", <https://api.github.com/organizations/18425666/repos?page=1&per_page=5>; rel="first"
  */
 fn parse_last_page(link_str: &str) -> Result<Option<PageNumber>, LinkParseError> {
@@ -63,13 +63,15 @@ fn parse_last_page(link_str: &str) -> Result<Option<PageNumber>, LinkParseError>
     // rel="last" is missing if we're on the last page
     let last_entry = match last_entry {
         None => return Ok(None),
-        Some(s) => s
+        Some(s) => s,
     };
     // This fails and returns a LinkParseError::UrlParseError if we can't parse the URL.
-    let last_url = last_entry.trim_start_matches('<')
+    let last_url = last_entry
+        .trim_start_matches('<')
         .trim_end_matches('>')
         .parse::<Url>()?;
-    let num_pages_str = last_url.query_pairs()
+    let num_pages_str = last_url
+        .query_pairs()
         // This returns the None variant if there was no "page" query parameter.
         // This is an error on GitHub's part (or a major change to their API),
         // and we'll return a LinkParseError::PageEntryMissingError if it happens.
@@ -101,21 +103,25 @@ fn next_button_class(loaded: bool) -> String {
     class
 }
 
-fn make_button_callback(page_number: PageNumber, repository_paginator_state: UseStateHandle<State>) -> Callback<MouseEvent> {
+fn make_button_callback(
+    page_number: PageNumber,
+    repository_paginator_state: UseStateHandle<State>,
+) -> Callback<MouseEvent> {
     Callback::from(move |_| {
         let repo_state = State {
             current_page: page_number,
-            last_page: repository_paginator_state.last_page
+            last_page: repository_paginator_state.last_page,
         };
-        web_sys::console::log_1(&format!("make_button_callback called with page number {page_number}.").into());
+        web_sys::console::log_1(
+            &format!("make_button_callback called with page number {page_number}.").into(),
+        );
         web_sys::console::log_1(&format!("New state is {repo_state:?}.").into());
         repository_paginator_state.set(repo_state);
     })
 }
 
 fn try_extract(link_str: &str, current_page: PageNumber) -> Result<PageNumber, LinkParseError> {
-    let parse_result = parse_last_page(link_str)?
-        .unwrap_or(current_page);
+    let parse_result = parse_last_page(link_str)?.unwrap_or(current_page);
     Ok(parse_result)
 }
 
@@ -126,14 +132,27 @@ fn handle_parse_error(err: &LinkParseError) {
         .alert_with_message("There was an error contacting the GitHub server; please try again")
         .unwrap();
     web_sys::console::error_1(
-        &format!("There was an error parsing the link field in the HTTP response: {:?}", err).into());
+        &format!(
+            "There was an error parsing the link field in the HTTP response: {:?}",
+            err
+        )
+        .into(),
+    );
 }
 
-fn load_new_page(organization: &str, desired_state_map_dispatch: Dispatch<DesiredStateMap>, page_map: UseStateHandle<PageRepoMap>, current_page: PageNumber, state: UseStateHandle<State>) {
+fn load_new_page(
+    organization: &str,
+    desired_state_map_dispatch: Dispatch<DesiredStateMap>,
+    page_map: UseStateHandle<PageRepoMap>,
+    current_page: PageNumber,
+    state: UseStateHandle<State>,
+) {
     let organization = organization.to_owned();
     // TODO: Possibly change `spawn_local` to `use_async`.
     wasm_bindgen_futures::spawn_local(async move {
-        web_sys::console::log_1(&format!("spawn_local called with organization {organization}.").into());
+        web_sys::console::log_1(
+            &format!("spawn_local called with organization {organization}.").into(),
+        );
         let request_url = format!("/orgs/{organization}/repos?sort=pushed&direction=asc&per_page={REPOS_PER_PAGE}&page={current_page}");
         let response = Request::get(&request_url).send().await.unwrap();
         let link = response.headers().get("link");
@@ -142,8 +161,11 @@ fn load_new_page(organization: &str, desired_state_map_dispatch: Dispatch<Desire
             None => 1,
             Some(link_str) => match try_extract(link_str, current_page) {
                 Ok(last_page) => last_page,
-                Err(err) => { handle_parse_error(&err); return }
-            }
+                Err(err) => {
+                    handle_parse_error(&err);
+                    return;
+                }
+            },
         };
         // TODO: This seems fairly slow when there are a lot of repositories. My guess
         // is that parsing the huge pile of JSON we get back is at least part of the
@@ -152,24 +174,18 @@ fn load_new_page(organization: &str, desired_state_map_dispatch: Dispatch<Desire
         // what GitHub currently provides), which should greatly reduce the
         // size of the JSON package and the cost of the parsing.
         let repos_result: Vec<Repository> = response.json().await.unwrap();
-        
+
         desired_state_map_dispatch.reduce_mut(|desired_state_map| {
             desired_state_map.with_repos(&repos_result);
         });
 
-        let mut new_page_map 
-            = page_map
-                .deref()
-                .clone();
-        new_page_map.add_page(
-            current_page,
-            repos_result.iter().map(|r| r.id).collect()
-        );
+        let mut new_page_map = page_map.deref().clone();
+        new_page_map.add_page(current_page, repos_result.iter().map(|r| r.id).collect());
         page_map.set(new_page_map);
 
         let repo_state = State {
             current_page,
-            last_page
+            last_page,
         };
         web_sys::console::log_1(&format!("The new repo state is <{repo_state:?}>.").into());
         state.set(repo_state);
@@ -184,7 +200,6 @@ fn load_new_page(organization: &str, desired_state_map_dispatch: Dispatch<Desire
 //   * Generics on function components have been added in the next version of Yew, so
 //     we can come back to this if/when I upgrade to the newer version.
 
-
 // This component has gotten _really_ long. At a minimum it should be moved
 // into its own file. It's also possible that it should be converted into
 // a struct component to help avoid some of the function call/return issues
@@ -196,7 +211,7 @@ pub fn repository_paginator(props: &Props) -> Html {
 
     let repository_paginator_state = use_state(|| State {
         current_page: 1,
-        last_page: 0
+        last_page: 0,
     });
     // TODO: I feel like these should actually be two separate state objects. Instead
     //   of having one big state object, it's probably better to separate out the state
@@ -204,8 +219,10 @@ pub fn repository_paginator(props: &Props) -> Html {
     // TODO: In doing this separation, we should change `last_page` to be `Option<usize>`
     //   so we'd have a clean way of distinguishing between when it's been set and when
     //   it hasn't.
-    let State { current_page, last_page }
-        = (*repository_paginator_state).clone();
+    let State {
+        current_page,
+        last_page,
+    } = (*repository_paginator_state).clone();
 
     log!(format!("In paginator with page_map {page_map:?}."));
 
@@ -220,16 +237,25 @@ pub fn repository_paginator(props: &Props) -> Html {
         let desired_state_map_dispatch = desired_state_map_dispatch.clone();
         use_effect_with_deps(
             move |_| {
-                repository_paginator_state.set(State { current_page: 1, last_page: 0 });
+                repository_paginator_state.set(State {
+                    current_page: 1,
+                    last_page: 0,
+                });
                 page_map.set(PageRepoMap::new());
                 desired_state_map_dispatch.set(DesiredStateMap::new());
                 || ()
             },
-            organization
+            organization,
         )
     }
 
-    web_sys::console::log_1(&format!("RepositoryPaginator called with organization {:?}.", organization).into());
+    web_sys::console::log_1(
+        &format!(
+            "RepositoryPaginator called with organization {:?}.",
+            organization
+        )
+        .into(),
+    );
     web_sys::console::log_1(&format!("Current StateMap is {:?}.", desired_state_map).into());
 
     // TODO: We want to see if the current page has already been loaded, and only do
@@ -245,45 +271,58 @@ pub fn repository_paginator(props: &Props) -> Html {
         let desired_state_map_dispatch = desired_state_map_dispatch.clone();
         use_effect_with_deps(
             move |(page_map, current_page)| {
-                log!(format!("Organization = {organization} and current page = {current_page}."));
-                log!(format!("Current page has loaded = {}", page_map.has_loaded_page(*current_page)));
+                log!(format!(
+                    "Organization = {organization} and current page = {current_page}."
+                ));
+                log!(format!(
+                    "Current page has loaded = {}",
+                    page_map.has_loaded_page(*current_page)
+                ));
                 let current_page = *current_page;
                 if !page_map.has_loaded_page(current_page) {
-                    load_new_page(&organization.clone(), 
-                        desired_state_map_dispatch, 
+                    load_new_page(
+                        &organization.clone(),
+                        desired_state_map_dispatch,
                         page_map.clone(),
-                        current_page, 
-                        repository_paginator_state);
+                        current_page,
+                        repository_paginator_state,
+                    );
                 }
                 || ()
-            }, 
-            (page_map, current_page)
+            },
+            (page_map, current_page),
         );
     }
-    
+
     let on_checkbox_change: Callback<DesiredArchiveState> = {
         Callback::from(move |desired_archive_state| {
-            let DesiredArchiveState { id, desired_archive_state } = desired_archive_state;
+            let DesiredArchiveState {
+                id,
+                desired_archive_state,
+            } = desired_archive_state;
             desired_state_map_dispatch.reduce_mut(|state_map| {
-                state_map.update_desired_state(id, DesiredState::from_paginator_state(desired_archive_state));
+                state_map.update_desired_state(
+                    id,
+                    DesiredState::from_paginator_state(desired_archive_state),
+                );
             });
         })
     };
 
     let prev: Callback<MouseEvent> = {
         // assert!(current_page > 1);
-        make_button_callback(current_page-1, repository_paginator_state.clone())
+        make_button_callback(current_page - 1, repository_paginator_state.clone())
     };
 
     let next_or_review: Callback<MouseEvent> = {
         if current_page < last_page {
-            make_button_callback(current_page+1, repository_paginator_state)
+            make_button_callback(current_page + 1, repository_paginator_state)
         } else {
             let history = use_history().unwrap();
             Callback::from(move |_: MouseEvent| history.push(Route::ReviewAndSubmit))
         }
     };
-    
+
     html! {
         <>
             <RepositoryList repo_ids={page_map.get_repo_ids(current_page)}

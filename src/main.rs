@@ -4,19 +4,21 @@
 #![warn(clippy::expect_used)]
 
 use yew::prelude::*;
-use yew_oauth2::prelude::*;
 use yew_oauth2::oauth2::*; // use `openid::*` when using OpenID connect
+use yew_oauth2::prelude::*;
 use yew_router::prelude::*;
 
 use yewdux::prelude::*;
 
-use ice_repos::{components::{
-    welcome::Welcome,
-    about::About,
-    organization_entry::OrganizationEntry,
-    repository_paginator::RepositoryPaginator,
-    review_and_submit::ReviewAndSubmit
-}, repository::Organization, Route};
+use ice_repos::{
+    components::{
+        about::About, organization_entry::OrganizationEntry,
+        repository_paginator::RepositoryPaginator, review_and_submit::ReviewAndSubmit,
+        welcome::Welcome,
+    },
+    repository::Organization,
+    Route,
+};
 
 // ===================================================================================
 // for {username}.github.io/{repo_name}
@@ -63,7 +65,7 @@ fn home_page() -> Html {
 
             // Where the list of repositories go
             // TODO: Maybe move this `if` into the paginator so that `HomePage` doesn't need to ever
-            //   access any part of the global state. 
+            //   access any part of the global state.
             if let Some(organization) = organization {
                 <div>
                     <h2 class="text-2xl">{ format!("The list of repositories for the organization {}", organization) }</h2>
@@ -87,7 +89,7 @@ fn app() -> Html {
         OAuth2Dispatcher::<Client>::new().start_login();
     });
     let logout = Callback::from(|_: MouseEvent| {
-            OAuth2Dispatcher::<Client>::new().logout();
+        OAuth2Dispatcher::<Client>::new().logout();
     });
 
     let config = Config {
@@ -107,15 +109,15 @@ fn app() -> Html {
                 </BrowserRouter>
             </Authenticated>
             <NotAuthenticated>
-                <p> 
+                <p>
                     { "You need to log in" }
                 </p>
                 <p>
-                    <button onclick={login.clone()}>{ "Login" }</button> 
+                    <button onclick={login.clone()}>{ "Login" }</button>
                 </p>
             </NotAuthenticated>
         </OAuth2>
-    }
+    };
 
     // html! {
     //     // ********************************************************
