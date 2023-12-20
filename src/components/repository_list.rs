@@ -1,9 +1,10 @@
-use gloo::console::log;
 use yew::prelude::*;
 use yewdux::prelude::use_store;
 
 use crate::components::repository_card::RepositoryCard;
-use crate::repository::{DesiredArchiveState, DesiredStateMap, RepoId};
+use crate::repository::{ArchiveState, Organization};
+
+use super::repository_card::ToggleState;
 
 // TODO: Can we use `AttrValue` instead of `String` here?
 // `AttrValue` is supposed to be more efficient
@@ -11,38 +12,44 @@ use crate::repository::{DesiredArchiveState, DesiredStateMap, RepoId};
 // https://yew.rs/docs/concepts/components/properties#memoryspeed-overhead-of-using-properties
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
-    pub repo_ids: Option<Vec<RepoId>>,
+    pub range: std::ops::Range<usize>,
+    pub filter: Vec<ArchiveState>,
+    pub toggle_state: ToggleState,
     pub empty_repo_list_message: String,
-    pub on_checkbox_change: Callback<DesiredArchiveState>,
 }
 
 #[function_component(RepositoryList)]
 pub fn repository_list(props: &Props) -> Html {
+    let (org, _) = use_store::<Organization>();
+
     let Props {
-        repo_ids,
+        range,
+        filter,
         empty_repo_list_message,
-        on_checkbox_change,
+        toggle_state,
     } = props;
 
-    let (state_map, _) = use_store::<DesiredStateMap>();
+    let mut repo_ids = org
+        .repositories
+        .iter()
+        .skip(range.start)
+        .filter(|(_, repo)| filter.contains(&repo.archive_state))
+        .take(range.end - range.start)
+        .map(|(repo_id, _)| repo_id)
+        .peekable();
+    // Check if we have any repos to display.
+    let is_empty = repo_ids.peek().is_none();
+    let repos_view = repo_ids
+        .map(|repo_id| {
+            let toggle_state = *toggle_state;
+            html! {
+                <RepositoryCard {repo_id} {toggle_state} />
+            }
+        })
+        .collect();
 
-    log!(format!("We're in repo list with repo IDs {repo_ids:?}"));
-    log!(format!(
-        "We're in repo list with ArchiveStateMap {state_map:?}"
-    ));
-
-    #[allow(clippy::option_if_let_else)]
-    if let Some(repo_ids) = repo_ids {
-        repo_ids
-            .iter()
-            .map(|repo_id: &RepoId| {
-                html! {
-                    <RepositoryCard repository={ state_map.get_repo(*repo_id).clone() }
-                                    desired_archive_state={ state_map.get_desired_state(*repo_id) }
-                                    {on_checkbox_change} />
-                }
-            })
-            .collect()
+    if !is_empty {
+        repos_view
     } else {
         html! {
             <p>{ empty_repo_list_message }</p>

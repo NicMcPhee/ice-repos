@@ -50,7 +50,7 @@ fn switch(routes: Route) -> Html {
 #[function_component(HomePage)]
 fn home_page() -> Html {
     let (organization, _) = use_store::<Organization>();
-    let organization = organization.name.as_ref();
+    let organization = organization.name();
 
     html! {
         <div class="grid grid-cols-1 divide-y flex flex-col space-y-8 m-16">
@@ -67,7 +67,7 @@ fn home_page() -> Html {
             if let Some(organization) = organization {
                 <div>
                     <h2 class="text-2xl">{ format!("The list of repositories for the organization {}", organization) }</h2>
-                    <RepositoryPaginator organization={ organization.clone() } />
+                    <RepositoryPaginator />
                 </div>
             }
 

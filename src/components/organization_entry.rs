@@ -6,7 +6,7 @@ use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-use crate::repository::Organization;
+use crate::{repository::Organization, services::get_repos::load_organization};
 
 // * Change the state when the text area loses focus instead of requiring a click on the
 //   submit button.
@@ -20,7 +20,8 @@ use crate::repository::Organization;
 #[function_component(OrganizationEntry)]
 pub fn organization_entry() -> Html {
     let field_contents = use_state(|| String::from(""));
-    let (_, dispatch) = use_store::<Organization>();
+    let org_dispatch = use_dispatch::<Organization>();
+    let pagination_dispatch = use_dispatch::<crate::components::repository_paginator::State>();
 
     let oninput = {
         let field_contents = field_contents.clone();
@@ -29,17 +30,27 @@ pub fn organization_entry() -> Html {
         })
     };
 
-    let onclick: Callback<MouseEvent> = {
+    let onclick = {
         let field_contents = field_contents.clone();
         Callback::from(move |_| {
-            if !field_contents.is_empty() {
-                dispatch.set(Organization {
-                    name: Some(field_contents.deref().clone()),
-                });
+            if field_contents.is_empty() {
+                return;
             }
+
+            org_dispatch.reduce_mut(|org| {
+                let name = field_contents.deref().clone().into();
+                org.set_name(name);
+            });
+
+            pagination_dispatch.reduce_mut(|state| {
+                state.reset();
+            });
+
+            load_organization(&field_contents, org_dispatch.clone());
         })
     };
 
+    // TODO: Use a form so we can also submit on "Enter" instead of having to click on "Submit"
     html! {
         <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100">
             <div class="card-body">
