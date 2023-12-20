@@ -11,7 +11,7 @@ pub mod page_repo_map;
 pub mod repository;
 pub mod services;
 
-#[derive(Clone, Routable, PartialEq, Eq)]
+#[derive(Clone, Routable, PartialEq, Eq, Copy)]
 pub enum Route {
     #[at("/ice-repos/review-and-submit")]
     ReviewAndSubmit,

@@ -4,8 +4,6 @@
 #![warn(clippy::expect_used)]
 
 use yew::prelude::*;
-use yew_oauth2::oauth2::*; // use `openid::*` when using OpenID connect
-use yew_oauth2::prelude::*;
 use yew_router::prelude::*;
 
 use yewdux::prelude::*;
@@ -24,7 +22,7 @@ use ice_repos::{
 // for {username}.github.io/{repo_name}
 // replace 'yew-template-for-github.io' to your repo name
 
-#[derive(Clone, Routable, PartialEq)]
+#[derive(Clone, Routable, PartialEq, Copy)]
 enum RootRoute {
     #[at("/ice-repos/")]
     Home,
@@ -32,16 +30,16 @@ enum RootRoute {
     Route,
 }
 
-fn root_route(routes: &RootRoute) -> Html {
+fn root_route(routes: RootRoute) -> Html {
     match routes {
         RootRoute::Home => html! { <HomePage/> },
         RootRoute::Route => html! {
-            <Switch<Route> render={Switch::render(switch)} />
+            <Switch<Route> render={switch} />
         },
     }
 }
 
-fn switch(routes: &Route) -> Html {
+fn switch(routes: Route) -> Html {
     match routes {
         Route::ReviewAndSubmit => html! { <ReviewAndSubmit/> },
         Route::About => html! { <About/> },
@@ -85,39 +83,48 @@ fn home_page() -> Html {
 /// main root
 #[function_component(App)]
 fn app() -> Html {
-    let login = Callback::from(|_: MouseEvent| {
-        OAuth2Dispatcher::<Client>::new().start_login();
-    });
-    let logout = Callback::from(|_: MouseEvent| {
-        OAuth2Dispatcher::<Client>::new().logout();
-    });
+    // let login = Callback::from(|_: MouseEvent| {
+    // OAuth2Dispatcher::<Client>::new().start_login();
+    // });
+    // let logout = Callback::from(|_: MouseEvent| {
+    // OAuth2Dispatcher::<Client>::new().logout();
+    // });
 
-    let config = Config {
-        client_id: "c5b735f256dadf835133".into(),
-        auth_url: "https://github.com/login/oauth/authorize".into(),
-        token_url: "http://0.0.0.0:8787/finalize_login".into(),
-    };
+    // let config = Config {
+    // client_id: "c5b735f256dadf835133".into(),
+    // auth_url: "https://github.com/login/oauth/authorize".into(),
+    // token_url: "http://0.0.0.0:8787/finalize_login".into(),
+    // };
 
     return html! {
-        <OAuth2 {config}>
-            <Failure><FailureMessage/></Failure>
-            <Authenticated>
-                <p> <button onclick={logout}>{ "Logout" }</button> </p>
-                <h1>{"Authenticated!"}</h1>
-                <BrowserRouter>
-                    <Switch<RootRoute> render={Switch::render(root_route)}/>
-                </BrowserRouter>
-            </Authenticated>
-            <NotAuthenticated>
-                <p>
-                    { "You need to log in" }
-                </p>
-                <p>
-                    <button onclick={login.clone()}>{ "Login" }</button>
-                </p>
-            </NotAuthenticated>
-        </OAuth2>
+        <>
+        // <p> <button onclick={logout}>{ "Logout" }</button> </p>
+        // <h1>{"Authenticated!"}</h1>
+        <BrowserRouter>
+            <Switch<RootRoute> render={root_route}/>
+        </BrowserRouter>
+        </>
     };
+    // return html! {
+    // <OAuth2 {config}>
+    // <Failure><FailureMessage/></Failure>
+    // <Authenticated>
+    // <p> <button onclick={logout}>{ "Logout" }</button> </p>
+    // <h1>{"Authenticated!"}</h1>
+    // <BrowserRouter>
+    // <Switch<RootRoute> render={Switch::render(root_route)}/>
+    // </BrowserRouter>
+    // </Authenticated>
+    // <NotAuthenticated>
+    // <p>
+    // { "You need to log in" }
+    // </p>
+    // <p>
+    // <button onclick={login.clone()}>{ "Login" }</button>
+    // </p>
+    // </NotAuthenticated>
+    // </OAuth2>
+    // };
 
     // html! {
     //     // ********************************************************
@@ -134,5 +141,5 @@ fn app() -> Html {
 
 /// entry point
 fn main() {
-    yew::start_app::<App>();
+    yew::Renderer::<App>::new().render();
 }

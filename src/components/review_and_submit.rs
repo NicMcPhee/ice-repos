@@ -1,5 +1,5 @@
 use web_sys::MouseEvent;
-use yew::{function_component, html, Callback};
+use yew::{function_component, html, Callback, Html};
 use yewdux::prelude::use_store;
 
 use crate::components::repository_list::RepositoryList;

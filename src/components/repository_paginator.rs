@@ -10,7 +10,6 @@ use reqwasm::http::Request;
 use yew::prelude::*;
 use yew_router::prelude::*;
 use yewdux::prelude::{use_store, Dispatch};
-use yewdux::store::Store;
 
 use crate::components::repository_list::RepositoryList;
 use crate::page_repo_map::{PageNumber, PageRepoMap};
@@ -235,18 +234,15 @@ pub fn repository_paginator(props: &Props) -> Html {
         let page_map = page_map.clone();
         let organization = organization.clone();
         let desired_state_map_dispatch = desired_state_map_dispatch.clone();
-        use_effect_with_deps(
-            move |_| {
-                repository_paginator_state.set(State {
-                    current_page: 1,
-                    last_page: 0,
-                });
-                page_map.set(PageRepoMap::new());
-                desired_state_map_dispatch.set(DesiredStateMap::new());
-                || ()
-            },
-            organization,
-        )
+        use_effect_with(organization, move |_| {
+            repository_paginator_state.set(State {
+                current_page: 1,
+                last_page: 0,
+            });
+            page_map.set(PageRepoMap::new());
+            desired_state_map_dispatch.set(DesiredStateMap::default());
+            || ()
+        })
     }
 
     web_sys::console::log_1(
@@ -269,29 +265,26 @@ pub fn repository_paginator(props: &Props) -> Html {
         let page_map = page_map.clone();
         let repository_paginator_state = repository_paginator_state.clone();
         let desired_state_map_dispatch = desired_state_map_dispatch.clone();
-        use_effect_with_deps(
-            move |(page_map, current_page)| {
-                log!(format!(
-                    "Organization = {organization} and current page = {current_page}."
-                ));
-                log!(format!(
-                    "Current page has loaded = {}",
-                    page_map.has_loaded_page(*current_page)
-                ));
-                let current_page = *current_page;
-                if !page_map.has_loaded_page(current_page) {
-                    load_new_page(
-                        &organization.clone(),
-                        desired_state_map_dispatch,
-                        page_map.clone(),
-                        current_page,
-                        repository_paginator_state,
-                    );
-                }
-                || ()
-            },
-            (page_map, current_page),
-        );
+        use_effect_with((page_map, current_page), move |(page_map, current_page)| {
+            log!(format!(
+                "Organization = {organization} and current page = {current_page}."
+            ));
+            log!(format!(
+                "Current page has loaded = {}",
+                page_map.has_loaded_page(*current_page)
+            ));
+            let current_page = *current_page;
+            if !page_map.has_loaded_page(current_page) {
+                load_new_page(
+                    &organization.clone(),
+                    desired_state_map_dispatch,
+                    page_map.clone(),
+                    current_page,
+                    repository_paginator_state,
+                );
+            }
+            || ()
+        });
     }
 
     let on_checkbox_change: Callback<DesiredArchiveState> = {
@@ -314,12 +307,12 @@ pub fn repository_paginator(props: &Props) -> Html {
         make_button_callback(current_page - 1, repository_paginator_state.clone())
     };
 
+    let history = use_navigator().unwrap();
     let next_or_review: Callback<MouseEvent> = {
         if current_page < last_page {
             make_button_callback(current_page + 1, repository_paginator_state)
         } else {
-            let history = use_history().unwrap();
-            Callback::from(move |_: MouseEvent| history.push(Route::ReviewAndSubmit))
+            Callback::from(move |_: MouseEvent| history.push(&Route::ReviewAndSubmit))
         }
     };
 
