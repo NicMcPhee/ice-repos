@@ -1,5 +1,4 @@
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
-use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yewdux::use_store;
 
@@ -7,17 +6,15 @@ use crate::repository::{ArchiveState, Organization, RepoId};
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
-    // TODO: Having to clone the repository in `RepositoryList` is annoying and it
-    // would be cool to turn this into a reference without making a mess of the
-    // memory management.
+    /// The ID of the repository to display.
     pub repo_id: RepoId,
-    // If this is the None variant, then this repository should already be archived.
-    // If it's a Some variant, then the enclosed boolean should indicate the desired
-    // state for this repository.
+    /// The state to set the repository to when the checkbox is checked/unchecked.
     pub toggle_state: ToggleState,
 }
 
-#[derive(Clone, PartialEq, Copy)]
+/// The toggle state for a repository card. Decsribes what ArchiveState to set when the checkbox is
+/// checked/unchecked.
+#[derive(Clone, PartialEq, Eq, Copy)]
 pub struct ToggleState {
     pub on: ArchiveState,
     pub off: ArchiveState,
@@ -25,29 +22,27 @@ pub struct ToggleState {
 
 #[function_component(RepositoryCard)]
 pub fn repository_card(props: &Props) -> Html {
+    let (org, org_dispatch) = use_store::<Organization>();
     let Props {
         repo_id,
         toggle_state,
     } = *props;
 
-    let (org, org_dispatch) = use_store::<Organization>();
     let repo = match org.repositories.get(&repo_id) {
         Some(repo) => repo,
-        None => return html! {},
+        None => return Default::default(),
     };
 
     let onclick = org_dispatch.reduce_mut_callback_with(move |state, mouse_event: MouseEvent| {
-        let event_target = mouse_event.target().unwrap_throw();
-        let target: HtmlInputElement = event_target.dyn_into().unwrap_throw();
-        let checked = target.checked();
+        let Some(repo) = state.repositories.get_mut(&repo_id) else {
+            return;
+        };
 
-        if let Some(repo) = state.repositories.get_mut(&repo_id) {
-            if checked {
-                repo.archive_state = toggle_state.on;
-            } else {
-                repo.archive_state = toggle_state.off;
-            }
-        }
+        repo.archive_state = if is_checked(&mouse_event) {
+            toggle_state.on
+        } else {
+            toggle_state.off
+        };
     });
 
     html! {
@@ -83,4 +78,13 @@ pub fn repository_card(props: &Props) -> Html {
             </div>
         </div>
     }
+}
+
+fn is_checked(mouse_event: &MouseEvent) -> bool {
+    mouse_event
+        .target()
+        .unwrap_throw()
+        .dyn_into::<web_sys::HtmlInputElement>()
+        .unwrap_throw()
+        .checked()
 }

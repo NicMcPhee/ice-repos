@@ -22,6 +22,7 @@ async fn load_page(
     Ok(response.json().await?)
 }
 
+/// Load the repositories for the given organization.
 pub fn load_organization(organization: &str, dispatch: Dispatch<Organization>) {
     let organization = organization.to_owned();
     yew::platform::spawn_local(async move {
@@ -40,6 +41,8 @@ pub fn load_organization(organization: &str, dispatch: Dispatch<Organization>) {
                 info,
             });
 
+            // This call causes the entire organization state to be cloned. This is probably fine,
+            // but may not scale well for a very large repo list.
             dispatch.reduce_mut(move |org| {
                 org.repositories.update(it);
             });

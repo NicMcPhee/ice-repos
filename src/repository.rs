@@ -15,14 +15,15 @@ pub struct Organization {
 }
 
 impl Organization {
-    /// Update the organization name.
+    /// Update the organization name. This will also reset the repositories, because we are
+    /// changing organizations. A separate call to `load_organization` must be made to actually
+    /// load the new organization's repositories.
     pub fn set_name(&mut self, name: Rc<str>) {
         self.name = Some(name);
         self.repositories = Default::default();
-        // TODO: Maybe make the request to get the repositories here?
     }
 
-    pub fn name(&self) -> Option<&Rc<str>> {
+    pub const fn name(&self) -> Option<&Rc<str>> {
         self.name.as_ref()
     }
 }
@@ -49,10 +50,34 @@ pub struct Repository {
 pub struct Repositories(BTreeMap<RepoId, Repository>);
 
 impl Repositories {
+    /// Updates the repositories with the given `repos`. This will overwrite any existing
+    /// repositories with the same ID.
     pub fn update(&mut self, repos: impl IntoIterator<Item = Repository>) {
         for repo in repos {
             self.0.insert(repo.info.id, repo);
         }
+    }
+
+    /// Selects a range of repositories, filtered by the given `filter`. The range is selected
+    /// _after_ filtering.
+    ///
+    /// # Panics
+    /// Panics if `range.start > range.end`.
+    pub fn select<'a>(
+        &'a self,
+        range: std::ops::Range<usize>,
+        filter: &'a [ArchiveState],
+    ) -> impl Iterator<Item = &Repository> + 'a {
+        assert!(range.start <= range.end, "range start must be <= range end");
+        self.0
+            .values()
+            .filter(|repo| filter.contains(&repo.archive_state))
+            .skip(range.start)
+            .take(range.end - range.start)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     pub fn len(&self) -> usize {
@@ -65,10 +90,6 @@ impl Repositories {
 
     pub fn get_mut(&mut self, id: &RepoId) -> Option<&mut Repository> {
         self.0.get_mut(id)
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (&RepoId, &Repository)> {
-        self.0.iter()
     }
 }
 
@@ -86,6 +107,7 @@ pub enum ArchiveState {
 }
 
 impl ArchiveState {
+    /// The filter for the pagination view. Includes all variants of `ArchiveState`.
     pub fn filter_select() -> Vec<Self> {
         vec![
             Self::AlreadyArchived,
@@ -95,6 +117,7 @@ impl ArchiveState {
         ]
     }
 
+    /// The filter for the review page. Includes only the `Archive` and `KeptInReview` variants.
     pub fn filter_review() -> Vec<Self> {
         vec![Self::Archive, Self::KeptInReview]
     }
