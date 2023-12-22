@@ -4,7 +4,7 @@ use yewdux::use_store_value;
 
 use crate::components::repository_card::ToggleState;
 use crate::components::repository_list::RepositoryList;
-use crate::repository::{ArchiveState, Organization};
+use crate::organization::{ArchiveState, Organization, RepoFilter};
 
 /// Review selected repositories to archive and
 /// submit archive requests.
@@ -12,7 +12,7 @@ use crate::repository::{ArchiveState, Organization};
 pub fn review_and_submit() -> Html {
     let org = use_store_value::<Organization>();
     let onclick: Callback<MouseEvent> = Callback::noop();
-    let filter = ArchiveState::filter_review();
+    let filter = RepoFilter::review_and_submit();
     let toggle_state = ToggleState {
         on: ArchiveState::Archive,
         off: ArchiveState::KeptInReview,

@@ -5,8 +5,8 @@ use yewdux::{use_store_value, Store};
 
 use crate::components::repository_card::ToggleState;
 use crate::components::repository_list::RepositoryList;
+use crate::organization::{ArchiveState, Organization, RepoFilter};
 use crate::page_repo_map::PageNumber;
-use crate::repository::{ArchiveState, Organization};
 use crate::Route;
 
 const PAGE_SIZE: PageNumber = 5;
@@ -28,7 +28,7 @@ pub fn repository_paginator() -> Html {
     let org = use_store_value::<Organization>();
     let history = use_navigator().unwrap();
 
-    let filter = ArchiveState::filter_select();
+    let filter = RepoFilter::all();
     let total_repos = org.repositories.len();
     let total_pages = {
         let pages = total_repos / PAGE_SIZE;

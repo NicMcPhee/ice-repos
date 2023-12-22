@@ -4,8 +4,8 @@ use reqwasm::http::Request;
 use yewdux::Dispatch;
 
 use crate::{
+    organization::{ArchiveState, Organization, Repository, RepositoryInfo},
     page_repo_map::PageNumber,
-    repository::{ArchiveState, Organization, Repository, RepositoryInfo},
 };
 
 // The GitHub default is 30; they allow no more than 100.

@@ -6,7 +6,7 @@ use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-use crate::{repository::Organization, services::get_repos::load_organization};
+use crate::{organization::Organization, services::get_repos::load_organization};
 
 // * Change the state when the text area loses focus instead of requiring a click on the
 //   submit button.

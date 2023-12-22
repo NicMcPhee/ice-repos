@@ -2,7 +2,7 @@ use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use yew::prelude::*;
 use yewdux::use_store;
 
-use crate::repository::{ArchiveState, Organization, RepoId};
+use crate::organization::{ArchiveState, Organization, RepoId};
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {

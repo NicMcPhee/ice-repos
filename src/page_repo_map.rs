@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use yewdux::store::Store;
 
-use crate::repository::RepoId;
+use crate::organization::RepoId;
 
 pub type PageNumber = usize;
 

@@ -28,6 +28,12 @@ impl Organization {
     }
 }
 
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct Repository {
+    pub info: RepositoryInfo,
+    pub archive_state: ArchiveState,
+}
+
 #[derive(Clone, Eq, PartialEq, Deserialize, Debug)]
 pub struct RepositoryInfo {
     pub id: RepoId,
@@ -38,12 +44,6 @@ pub struct RepositoryInfo {
     pub pushed_at: DateTime<Local>,
     // #[serde(flatten)]
     // extras: HashMap<String, Value>,
-}
-
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Repository {
-    pub info: RepositoryInfo,
-    pub archive_state: ArchiveState,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -66,12 +66,12 @@ impl Repositories {
     pub fn select<'a>(
         &'a self,
         range: std::ops::Range<usize>,
-        filter: &'a [ArchiveState],
+        filter: &'a RepoFilter,
     ) -> impl Iterator<Item = &Repository> + 'a {
         assert!(range.start <= range.end, "range start must be <= range end");
         self.0
             .values()
-            .filter(|repo| filter.contains(&repo.archive_state))
+            .filter(|repo| filter.call(repo))
             .skip(range.start)
             .take(range.end - range.start)
     }
@@ -107,21 +107,6 @@ pub enum ArchiveState {
 }
 
 impl ArchiveState {
-    /// The filter for the pagination view. Includes all variants of `ArchiveState`.
-    pub fn filter_select() -> Vec<Self> {
-        vec![
-            Self::AlreadyArchived,
-            Self::Keep,
-            Self::Archive,
-            Self::KeptInReview,
-        ]
-    }
-
-    /// The filter for the review page. Includes only the `Archive` and `KeptInReview` variants.
-    pub fn filter_review() -> Vec<Self> {
-        vec![Self::Archive, Self::KeptInReview]
-    }
-
     /// Convert a boolean, essentially the toggle state of a checkbox in the
     /// Paginator component and convert it into an `ArchiveState`. In the
     /// paginator, we want to use the `Skip` state to indicate that we do not
@@ -146,5 +131,74 @@ impl ArchiveState {
         } else {
             Self::KeptInReview
         }
+    }
+}
+
+/// Filters repositories based on some criteria.
+///
+/// # Example
+/// ```
+/// use ice_repos::organization::RepoFilter;
+///
+/// let filter = RepoFilter::review_and_submit()
+///     .and(|repo| repo.info.description.is_some())
+///     .and(|repo| repo.info.name.starts_with("a"))
+///     // Other filters can be unpacked to combine with the current filter.
+///     .and(RepoFilter::all().unpack());
+/// ```
+#[derive(Clone)]
+pub struct RepoFilter(Rc<dyn Fn(&Repository) -> bool>);
+impl RepoFilter {
+    pub fn new(filter: impl Fn(&Repository) -> bool + 'static) -> Self {
+        Self(Rc::new(filter))
+    }
+
+    /// Filter for repositories to display in the review and submit page.
+    pub fn review_and_submit() -> Self {
+        Self::new(|repo| {
+            [ArchiveState::Archive, ArchiveState::KeptInReview].contains(&repo.archive_state)
+        })
+    }
+
+    /// Let all repositories through.
+    pub fn all() -> Self {
+        Self::new(|_| true)
+    }
+
+    pub fn and<F>(self, other: F) -> Self
+    where
+        F: Fn(&Repository) -> bool + 'static,
+    {
+        Self::new(move |repo| self.call(repo) && other(repo))
+    }
+
+    pub fn or<F>(self, other: F) -> Self
+    where
+        F: Fn(&Repository) -> bool + 'static,
+    {
+        Self::new(move |repo| self.call(repo) || other(repo))
+    }
+
+    pub fn unpack(self) -> impl Fn(&Repository) -> bool {
+        move |repo| self.call(repo)
+    }
+
+    pub fn call(&self, repo: &Repository) -> bool {
+        (self.0)(repo)
+    }
+}
+
+impl PartialEq for RepoFilter {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl<F> From<F> for RepoFilter
+where
+    F: Fn(&Repository) -> bool + 'static,
+{
+    fn from(f: F) -> Self {
+        Self::new(f)
     }
 }

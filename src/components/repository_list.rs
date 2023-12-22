@@ -2,14 +2,14 @@ use yew::prelude::*;
 use yewdux::use_store_value;
 
 use crate::components::repository_card::RepositoryCard;
-use crate::repository::{ArchiveState, Organization};
+use crate::organization::{Organization, RepoFilter};
 
 use super::repository_card::ToggleState;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
     pub range: std::ops::Range<usize>,
-    pub filter: Vec<ArchiveState>,
+    pub filter: RepoFilter,
     pub toggle_state: ToggleState,
     pub empty_repo_list_message: AttrValue,
 }

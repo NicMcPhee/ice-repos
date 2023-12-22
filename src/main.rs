@@ -14,7 +14,7 @@ use ice_repos::{
         repository_paginator::RepositoryPaginator, review_and_submit::ReviewAndSubmit,
         welcome::Welcome,
     },
-    repository::Organization,
+    organization::Organization,
     Route,
 };
 
