@@ -1,45 +1,44 @@
-use gloo::console::log;
 use yew::prelude::*;
-use yewdux::prelude::use_store;
+use yewdux::use_store_value;
 
-use crate::repository::{RepoId, DesiredArchiveState, DesiredStateMap};
 use crate::components::repository_card::RepositoryCard;
+use crate::organization::{Organization, RepoFilter};
 
-// TODO: Can we use `AttrValue` instead of `String` here?
-// `AttrValue` is supposed to be more efficient
-// because cloning `String`s can be expensive.
-// https://yew.rs/docs/concepts/components/properties#memoryspeed-overhead-of-using-properties
+use super::repository_card::ToggleState;
+
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
-    pub repo_ids: Option<Vec<RepoId>>,
-    pub empty_repo_list_message: String,
-    pub on_checkbox_change: Callback<DesiredArchiveState>
+    pub range: std::ops::Range<usize>,
+    pub filter: RepoFilter,
+    pub toggle_state: ToggleState,
+    pub empty_repo_list_message: AttrValue,
 }
 
 #[function_component(RepositoryList)]
 pub fn repository_list(props: &Props) -> Html {
-    let Props { repo_ids, 
-                empty_repo_list_message, 
-                on_checkbox_change } = props;
+    let org = use_store_value::<Organization>();
+    let Props {
+        range,
+        filter,
+        empty_repo_list_message,
+        toggle_state,
+    } = props;
 
-    let (state_map, _) = use_store::<DesiredStateMap>();
+    let mut repos = org.repositories.select(range.clone(), filter).peekable();
 
-    log!(format!("We're in repo list with repo IDs {repo_ids:?}"));
-    log!(format!("We're in repo list with ArchiveStateMap {state_map:?}"));
-
-    #[allow(clippy::option_if_let_else)]
-    if let Some(repo_ids) = repo_ids {
-        repo_ids.iter()
-                .map(|repo_id: &RepoId| {
-            html! {
-                <RepositoryCard repository={ state_map.get_repo(*repo_id).clone() } 
-                                desired_archive_state={ state_map.get_desired_state(*repo_id) } 
-                                {on_checkbox_change} />
-            }
-        }).collect()
-    } else {
-        html! {
+    let is_empty = repos.peek().is_none();
+    if is_empty {
+        return html! {
             <p>{ empty_repo_list_message }</p>
-        }
+        };
     }
+
+    repos
+        .map(|repo| {
+            let toggle_state = *toggle_state;
+            html! {
+                <RepositoryCard repo_id={repo.info.id} {toggle_state} />
+            }
+        })
+        .collect()
 }

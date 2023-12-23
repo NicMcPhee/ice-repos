@@ -2,19 +2,19 @@ use std::collections::HashMap;
 
 use yewdux::store::Store;
 
-use crate::repository::RepoId;
+use crate::organization::RepoId;
 
 pub type PageNumber = usize;
 
 #[derive(Default, Debug, Store, Eq, PartialEq, Clone)]
 pub struct PageRepoMap {
-    map: HashMap<PageNumber, Vec<RepoId>>
+    map: HashMap<PageNumber, Vec<RepoId>>,
 }
 
 impl PageRepoMap {
     pub fn new() -> Self {
         Self {
-            map: HashMap::new()
+            map: HashMap::new(),
         }
     }
 

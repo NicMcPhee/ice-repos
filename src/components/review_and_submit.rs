@@ -1,40 +1,29 @@
 use web_sys::MouseEvent;
-use yew::{function_component, html, Callback};
-use yewdux::prelude::use_store;
+use yew::{function_component, html, Callback, Html};
+use yewdux::use_store_value;
 
-use crate::repository::{DesiredStateMap, DesiredArchiveState, DesiredState};
+use crate::components::repository_card::ToggleState;
 use crate::components::repository_list::RepositoryList;
-use crate::services::archive_repos::archive_repositories;
+use crate::organization::{ArchiveState, Organization, RepoFilter};
 
 /// Review selected repositories to archive and
 /// submit archive requests.
 #[function_component(ReviewAndSubmit)]
 pub fn review_and_submit() -> Html {
-    let (archive_state_map, archive_state_dispatch) 
-        = use_store::<DesiredStateMap>();
-
-    let on_checkbox_change: Callback<DesiredArchiveState> = {
-        Callback::from(move |desired_archive_state| {
-            let DesiredArchiveState { id, desired_archive_state } = desired_archive_state;
-            archive_state_dispatch.reduce_mut(|archive_state_map| {
-                archive_state_map.update_desired_state(id, DesiredState::from_review_state(desired_archive_state));
-            });
-        })
+    let org = use_store_value::<Organization>();
+    let onclick: Callback<MouseEvent> = Callback::noop();
+    let filter = RepoFilter::review_and_submit();
+    let toggle_state = ToggleState {
+        on: ArchiveState::Archive,
+        off: ArchiveState::KeptInReview,
     };
-
-    let onclick: Callback<MouseEvent> = {
-        let archive_state_map = archive_state_map.clone();
-        Callback::from(move |_| {
-            archive_repositories(archive_state_map.get_repos_to_archive());
-        })
-    };
+    let range = 0..org.repositories.len();
 
     // TODO: We need some kind of shared header that comes across to pages like this.
     html! {
         <div>
-            <RepositoryList repo_ids={ archive_state_map.get_repo_ids_to_review() }
-                            empty_repo_list_message={ "You selected no repositories to archive" }
-                            { on_checkbox_change } />
+            <RepositoryList {range} { filter } { toggle_state }
+                            empty_repo_list_message={ "You selected no repositories to archive" }/>
 
             <p class="text-xl text-red-700">{
                 "Clicking the 'Archive selected repositories' button will send archive requests
